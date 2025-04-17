@@ -18,3 +18,8 @@ export interface User {
   name: string;
   role: UserRole;
 }
+
+export interface FileUploadResult {
+  path: string;
+  url: string;
+}

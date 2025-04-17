@@ -1,14 +1,15 @@
 
 import { useState } from 'react';
-import { Project } from '@/types';
+import { Project, FileUploadResult } from '@/types';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { HexaButton } from '@/components/ui/hexa-button';
-import { X, Plus, Image, Link } from 'lucide-react';
+import { X, Plus, Link } from 'lucide-react';
 import { allTags } from '@/data/mockData';
+import ImageUploader from './ImageUploader';
 
 type ProjectFormValues = Omit<Project, 'id' | 'createdAt'>;
 
@@ -34,6 +35,7 @@ const ProjectForm = ({
   const [selectedTags, setSelectedTags] = useState<string[]>(
     defaultValues?.tags || []
   );
+  const [coverImage, setCoverImage] = useState(defaultValues?.coverImage || '/placeholder.svg');
 
   const form = useForm<ProjectFormValues>({
     defaultValues: defaultValues || {
@@ -74,9 +76,20 @@ const ProjectForm = ({
     setSelectedTags(selectedTags.filter(t => t !== tag));
   };
 
+  const handleCoverImageUploaded = (result: FileUploadResult) => {
+    setCoverImage(result.url);
+  };
+
+  const handleScreenshotUploaded = (index: number, result: FileUploadResult) => {
+    const newScreenshots = [...screenshots];
+    newScreenshots[index] = result.url;
+    setScreenshots(newScreenshots);
+  };
+
   const handleSubmit = (data: ProjectFormValues) => {
     onSubmit({
       ...data,
+      coverImage,
       screenshots,
       tags: selectedTags,
     });
@@ -124,25 +137,19 @@ const ProjectForm = ({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="coverImage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cover Image URL</FormLabel>
-                    <FormControl>
-                      <div className="flex gap-2">
-                        <Input placeholder="/path/to/image.jpg" {...field} />
-                        <HexaButton type="button" variant="outline" size="icon" className="flex-shrink-0">
-                          <Image size={16} />
-                        </HexaButton>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="grid grid-cols-1 gap-4">
+              <FormItem>
+                <FormLabel>Cover Image</FormLabel>
+                <FormControl>
+                  <ImageUploader 
+                    currentImageUrl={coverImage}
+                    onImageUploaded={handleCoverImageUploaded}
+                    bucketName="project-images"
+                    folderPath="covers"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
               
               <FormField
                 control={form.control}
@@ -190,24 +197,24 @@ const ProjectForm = ({
               <FormLabel>Screenshots</FormLabel>
               <div className="space-y-2">
                 {screenshots.map((screenshot, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      placeholder={`Screenshot ${i + 1} URL`}
-                      value={screenshot}
-                      onChange={e => {
-                        const newScreenshots = [...screenshots];
-                        newScreenshots[i] = e.target.value;
-                        setScreenshots(newScreenshots);
-                      }}
+                  <div key={i}>
+                    <ImageUploader 
+                      currentImageUrl={screenshot}
+                      onImageUploaded={(result) => handleScreenshotUploaded(i, result)}
+                      bucketName="project-images"
+                      folderPath="screenshots"
+                      className="mb-2"
                     />
                     {screenshots.length > 1 && (
                       <HexaButton
                         type="button"
                         variant="outline"
-                        size="icon"
+                        size="sm"
                         onClick={() => removeScreenshot(i)}
+                        className="mb-2"
                       >
-                        <X size={16} />
+                        <X size={16} className="mr-1" />
+                        Remove Screenshot
                       </HexaButton>
                     )}
                   </div>
