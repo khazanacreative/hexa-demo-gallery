@@ -1,7 +1,6 @@
-
 import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
-import { UserIcon, Lock, Menu, Search, Bell, LogOut, Users } from 'lucide-react';
+import { UserIcon, Menu, Search, LogOut, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
@@ -48,7 +47,7 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
             
             {isAdmin && (
               <button className="p-2 hover:bg-white/10 rounded-full transition-colors relative">
-                <Bell size={18} />
+                <Users size={18} />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></span>
               </button>
             )}
@@ -66,24 +65,8 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
             </Link>
           )}
           
-          <HexaButton 
-            variant="ghost" 
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10"
-            onClick={onRoleToggle}
-          >
-            {isAdmin ? (
-              <>
-                <Lock size={16} />
-                <span className="hidden sm:inline">Admin Mode</span>
-              </>
-            ) : (
-              <>
-                <UserIcon size={16} />
-                <span className="hidden sm:inline">User Mode</span>
-              </>
-            )}
-          </HexaButton>
-          
+          {/* Tombol Admin/User Mode dihapus */}
+
           <HexaButton 
             variant="ghost" 
             className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 ml-2"
