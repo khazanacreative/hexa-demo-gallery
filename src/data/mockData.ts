@@ -4,12 +4,13 @@ import { Project, User } from '../types';
 export const projects: Project[] = [
   {
     id: '1',
-    title: 'Morph Dashboard',
+    title: 'HEXA Dashboard',
     description: 'A modern admin dashboard with complex data visualization and user management capabilities. Built with React and Tailwind CSS.',
     coverImage: '/placeholder.svg',
     screenshots: ['/demo-screenshot.svg', '/placeholder.svg', '/placeholder.svg'],
     demoUrl: 'https://example.com/demo1',
     category: 'Web App',
+    tags: ['dashboard', 'admin', 'visualization', 'react'],
     createdAt: '2023-10-15',
   },
   {
@@ -20,6 +21,7 @@ export const projects: Project[] = [
     screenshots: ['/demo-screenshot.svg', '/placeholder.svg'],
     demoUrl: 'https://example.com/demo2',
     category: 'Mobile App',
+    tags: ['mobile', 'environment', 'sustainability', 'tracking'],
     createdAt: '2023-11-20',
   },
   {
@@ -30,6 +32,7 @@ export const projects: Project[] = [
     screenshots: ['/demo-screenshot.svg', '/placeholder.svg', '/placeholder.svg', '/placeholder.svg'],
     demoUrl: 'https://example.com/demo3',
     category: 'Website',
+    tags: ['portfolio', 'gallery', 'creative', 'animation'],
     createdAt: '2024-01-05',
   },
   {
@@ -40,6 +43,7 @@ export const projects: Project[] = [
     screenshots: ['/demo-screenshot.svg', '/placeholder.svg'],
     demoUrl: 'https://example.com/demo4',
     category: 'Web App',
+    tags: ['finance', 'analytics', 'reporting', 'fintech'],
     createdAt: '2024-02-18',
   },
   {
@@ -50,6 +54,7 @@ export const projects: Project[] = [
     screenshots: ['/demo-screenshot.svg', '/placeholder.svg', '/placeholder.svg'],
     demoUrl: 'https://example.com/demo5',
     category: 'Mobile App',
+    tags: ['health', 'fitness', 'tracking', 'ai', 'mobile'],
     createdAt: '2024-03-10',
   },
   {
@@ -60,6 +65,7 @@ export const projects: Project[] = [
     screenshots: ['/demo-screenshot.svg', '/placeholder.svg'],
     demoUrl: 'https://example.com/demo6',
     category: 'Website',
+    tags: ['ecommerce', 'shopping', 'nextjs', 'payment'],
     createdAt: '2024-04-05',
   },
 ];
@@ -78,3 +84,7 @@ export const users: User[] = [
 ];
 
 export const currentUser: User = users[0]; // Default to admin for demo
+
+export const allTags = Array.from(
+  new Set(projects.flatMap(project => project.tags))
+).sort();

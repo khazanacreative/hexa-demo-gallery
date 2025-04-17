@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ExternalLink, ChevronLeft, ChevronRight, Star, MessageSquare, Share2, Edit } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { MorphButton } from './ui/morph-button';
+import { HexaButton } from './ui/hexa-button';
 import { Separator } from './ui/separator';
 
 interface ProjectDetailsModalProps {
@@ -35,12 +35,12 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl w-[90vw] p-0 overflow-hidden rounded-xl">
-        <div className="bg-gradient-to-r from-morph-purple/10 to-morph-blue/10 p-6">
+        <div className="bg-gradient-to-r from-hexa-red/10 to-hexa-dark-red/10 p-6">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-2xl font-bold">{project.title}</DialogTitle>
               {isAdmin && (
-                <span className="bg-gradient-to-r from-morph-purple to-morph-blue text-white text-xs px-3 py-1 rounded-full">
+                <span className="bg-gradient-to-r from-hexa-red to-hexa-dark-red text-white text-xs px-3 py-1 rounded-full">
                   Admin View
                 </span>
               )}
@@ -63,22 +63,22 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
             
             {project.screenshots.length > 1 && (
               <>
-                <MorphButton 
+                <HexaButton 
                   variant="ghost" 
                   size="icon"
                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9"
                   onClick={prevImage}
                 >
                   <ChevronLeft size={18} />
-                </MorphButton>
-                <MorphButton 
+                </HexaButton>
+                <HexaButton 
                   variant="ghost" 
                   size="icon"
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9"
                   onClick={nextImage}
                 >
                   <ChevronRight size={18} />
-                </MorphButton>
+                </HexaButton>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                   {project.screenshots.map((_, i) => (
                     <button 
@@ -98,23 +98,37 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
           <h3 className="text-lg font-semibold mb-2">Description</h3>
           <p className="text-gray-700 mb-6">{project.description}</p>
 
+          {/* Tags */}
+          {project.tags && project.tags.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold mb-2">Tags</h3>
+              <div className="flex flex-wrap gap-2">
+                {project.tags.map(tag => (
+                  <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 items-center justify-between mt-6">
             <div className="flex gap-2">
-              <MorphButton variant="outline" size="sm" className="gap-1">
+              <HexaButton variant="outline" size="sm" className="gap-1">
                 <Star size={14} />
                 <span>Favorite</span>
-              </MorphButton>
+              </HexaButton>
               
               {isAdmin && (
-                <MorphButton variant="outline" size="sm" className="gap-1">
+                <HexaButton variant="outline" size="sm" className="gap-1">
                   <Edit size={14} />
                   <span>Edit Details</span>
-                </MorphButton>
+                </HexaButton>
               )}
             </div>
 
-            <MorphButton 
-              variant="morph" 
+            <HexaButton 
+              variant="hexa" 
               className="gap-2"
               asChild
             >
@@ -122,7 +136,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
                 <ExternalLink size={16} />
                 <span>Visit Demo</span>
               </a>
-            </MorphButton>
+            </HexaButton>
           </div>
           
           {isAdmin && (
@@ -130,7 +144,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
               <Separator className="my-5" />
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                  <span className="w-2 h-2 bg-morph-purple rounded-full"></span>
+                  <span className="w-2 h-2 bg-hexa-red rounded-full"></span>
                   Admin Analytics
                 </h4>
                 <div className="grid grid-cols-3 gap-4 text-center">

@@ -7,6 +7,7 @@ export interface Project {
   screenshots: string[];
   demoUrl: string;
   category: string;
+  tags: string[];  // Added tags field for better filtering
   createdAt: string;
 }
 

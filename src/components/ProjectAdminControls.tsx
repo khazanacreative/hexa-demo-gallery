@@ -1,9 +1,8 @@
 
 import { Project } from '@/types';
-import { Button } from "@/components/ui/button";
 import { useAuth } from '@/context/AuthContext';
-import { Edit, Trash2, EyeOff } from 'lucide-react';
-import { MorphButton } from './ui/morph-button';
+import { Edit, Trash2 } from 'lucide-react';
+import { HexaButton } from './ui/hexa-button';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -23,8 +22,8 @@ const ProjectAdminControls = ({
 
   return (
     <div className="absolute top-2 right-2 z-30 flex gap-1">
-      <MorphButton 
-        variant="morph" 
+      <HexaButton 
+        variant="hexa" 
         size="sm"
         className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
         onClick={(e) => {
@@ -33,9 +32,9 @@ const ProjectAdminControls = ({
         }}
       >
         <Edit size={14} />
-      </MorphButton>
+      </HexaButton>
       
-      <MorphButton
+      <HexaButton
         variant="destructive"
         size="sm"
         className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
@@ -45,7 +44,7 @@ const ProjectAdminControls = ({
         }}
       >
         <Trash2 size={14} />
-      </MorphButton>
+      </HexaButton>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -62,14 +63,14 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-                // Morph UI inspired colors
-                'morph': {
-                    purple: '#9B87F5',
-                    'light-purple': '#D6BCFA',
-                    'vivid-purple': '#8B5CF6',
-                    blue: '#0EA5E9',
-                    orange: '#F97316',
-                    pink: '#D946EF',
+                // HEXA colors - updated to red and gray tones
+                'hexa': {
+                    red: '#ea384c',
+                    'light-red': '#f97171',
+                    'dark-red': '#c01e30',
+                    gray: '#555555',
+                    'light-gray': '#F1F1F1',
+                    'dark-gray': '#333333',
                 }
 			},
 			borderRadius: {
@@ -114,7 +115,7 @@ export default {
                         opacity: "1"
                     }
                 },
-                'morph-pulse': {
+                'hexa-pulse': {
                     '0%, 100%': { 
                         opacity: 1,
                         transform: 'scale(1)'
@@ -131,11 +132,11 @@ export default {
                 'fade-in': 'fade-in 0.5s ease-out',
                 'scale-in': 'scale-in 0.4s ease-out',
                 'enter': 'fade-in 0.5s ease-out, scale-in 0.4s ease-out',
-                'morph-pulse': 'morph-pulse 3s infinite',
-			},
+                'hexa-pulse': 'hexa-pulse 3s infinite',
+            },
             boxShadow: {
-                'morph': '0 8px 30px rgba(155, 135, 245, 0.15)',
-                'morph-hover': '0 14px 40px rgba(155, 135, 245, 0.25)',
+                'hexa': '0 8px 30px rgba(234, 56, 76, 0.15)',
+                'hexa-hover': '0 14px 40px rgba(234, 56, 76, 0.25)',
             }
 		}
 	},

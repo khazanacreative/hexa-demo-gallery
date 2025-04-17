@@ -1,6 +1,6 @@
 
 import { useAuth } from '@/context/AuthContext';
-import { MorphButton } from './ui/morph-button';
+import { HexaButton } from './ui/hexa-button';
 import { UserIcon, Lock, Menu, Search, Bell } from 'lucide-react';
 
 interface HeaderProps {
@@ -12,10 +12,10 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
   const isAdmin = currentUser.role === 'admin';
 
   return (
-    <header className="bg-gradient-to-r from-morph-purple to-morph-blue text-white py-4 px-6 sm:px-10 shadow-lg">
+    <header className="bg-gradient-to-r from-hexa-red to-hexa-dark-red text-white py-4 px-6 sm:px-10 shadow-lg">
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Morph Gallery</h1>
+          <h1 className="text-2xl font-bold">HEXA Demo Gallery</h1>
           <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Showcase</span>
         </div>
         
@@ -40,12 +40,12 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
             {isAdmin && (
               <button className="p-2 hover:bg-white/10 rounded-full transition-colors relative">
                 <Bell size={18} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></span>
               </button>
             )}
           </div>
           
-          <MorphButton 
+          <HexaButton 
             variant="ghost" 
             className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10"
             onClick={onRoleToggle}
@@ -61,7 +61,7 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
                 <span className="hidden sm:inline">User Mode</span>
               </>
             )}
-          </MorphButton>
+          </HexaButton>
           
           <button className="md:hidden p-2 hover:bg-white/10 rounded transition-colors">
             <Menu size={20} />

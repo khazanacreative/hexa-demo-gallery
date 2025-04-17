@@ -3,7 +3,7 @@ import { Project } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { MorphButton } from './ui/morph-button';
+import { HexaButton } from './ui/hexa-button';
 import ProjectAdminControls from './ProjectAdminControls';
 
 interface ProjectCardProps {
@@ -18,7 +18,7 @@ const ProjectCard = ({ project, onClick, onEdit, onDelete }: ProjectCardProps) =
   const isAdmin = currentUser.role === 'admin';
 
   return (
-    <Card className="overflow-hidden transition-all duration-300 border border-gray-200 hover:border-morph-purple h-full flex flex-col shadow-sm hover:shadow-morph animate-scale-in">
+    <Card className="overflow-hidden transition-all duration-300 border border-gray-200 hover:border-hexa-red h-full flex flex-col shadow-sm hover:shadow-hexa animate-scale-in">
       <div 
         className="h-48 overflow-hidden relative group cursor-pointer"
         onClick={() => onClick(project)}
@@ -30,7 +30,7 @@ const ProjectCard = ({ project, onClick, onEdit, onDelete }: ProjectCardProps) =
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
         />
         <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-20">
-          <div className="inline-block bg-gradient-to-r from-morph-purple to-morph-blue text-xs font-semibold px-2 py-1 rounded-md mb-1">
+          <div className="inline-block bg-gradient-to-r from-hexa-red to-hexa-dark-red text-xs font-semibold px-2 py-1 rounded-md mb-1">
             {project.category}
           </div>
         </div>
@@ -51,21 +51,37 @@ const ProjectCard = ({ project, onClick, onEdit, onDelete }: ProjectCardProps) =
       
       <CardContent className="pb-4 flex-grow">
         <p className="text-sm line-clamp-3">{project.description}</p>
+        
+        {/* Tags */}
+        {project.tags && project.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-3">
+            {project.tags.slice(0, 3).map(tag => (
+              <span key={tag} className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full">
+                {tag}
+              </span>
+            ))}
+            {project.tags.length > 3 && (
+              <span className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full">
+                +{project.tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
       
       <CardFooter className="pt-0 flex justify-between items-center">
-        <MorphButton 
-          variant="morphOutline" 
+        <HexaButton 
+          variant="hexaOutline" 
           size="sm" 
           className="gap-1 text-xs"
           onClick={() => onClick(project)}
         >
           <ImageIcon size={14} />
           <span>{project.screenshots.length} Screenshots</span>
-        </MorphButton>
+        </HexaButton>
         
-        <MorphButton 
-          variant="morph" 
+        <HexaButton 
+          variant="hexa" 
           size="sm" 
           className="gap-1"
           asChild
@@ -74,7 +90,7 @@ const ProjectCard = ({ project, onClick, onEdit, onDelete }: ProjectCardProps) =
             <ExternalLink size={14} />
             <span>Demo</span>
           </a>
-        </MorphButton>
+        </HexaButton>
       </CardFooter>
       
       {isAdmin && (
