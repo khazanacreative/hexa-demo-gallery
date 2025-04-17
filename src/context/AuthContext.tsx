@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User } from '@/types';
+import { User, UserRole } from '@/types';
 
 // Extended user interface with email and password
 interface AuthUser extends User {
@@ -13,7 +13,7 @@ interface UserCreationData {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'user';
+  role: UserRole; // Using the specific UserRole type
 }
 
 interface AuthContextType {
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!currentUser) return;
     
     // This is for demo purposes only - in a real app you wouldn't do this
-    const newRole = currentUser.role === 'admin' ? 'user' : 'admin';
+    const newRole: UserRole = currentUser.role === 'admin' ? 'user' : 'admin';
     const updatedUser = { ...currentUser, role: newRole };
     setCurrentUser(updatedUser);
     
