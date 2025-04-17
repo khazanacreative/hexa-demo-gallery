@@ -17,6 +17,7 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
+  email?: string; // Added email field
 }
 
 export interface FileUploadResult {
