@@ -26,19 +26,7 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
           </Link>
           <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Showcase</span>
         </div>
-        
-        <div className="hidden md:flex items-center gap-6">
-          <nav>
-            <ul className="flex items-center gap-6">
-              <li><Link to="/" className="hover:text-white/80 transition-colors">Browse</Link></li>
-              <li><Link to="/" className="hover:text-white/80 transition-colors">Categories</Link></li>
-              {isAdmin && (
-                <li><Link to="/users" className="hover:text-white/80 transition-colors">Manage Users</Link></li>
-              )}
-            </ul>
-          </nav>
-        </div>
-        
+                       
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-3 mr-2">
             <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
