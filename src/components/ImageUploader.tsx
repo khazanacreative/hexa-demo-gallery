@@ -1,10 +1,9 @@
-
 import { useState } from 'react';
 import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
-import { supabase } from '../App';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ImageUploaderProps {
   currentImageUrl: string;
@@ -27,7 +26,7 @@ const ImageUploader = ({
     try {
       // Check if Supabase client is available
       if (!supabase) {
-        throw new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+        throw new Error('Supabase client is not available.');
       }
       
       setUploading(true);

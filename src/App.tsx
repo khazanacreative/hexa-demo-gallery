@@ -9,23 +9,8 @@ import Login from "./pages/Login";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import React from "react";
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "./integrations/supabase/client";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-
-// Initialize Supabase client with environment variables and error handling
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Add validation to ensure we have the required variables
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
-}
-
-// Create a dummy client if environment variables are missing
-// This allows the app to at least load, though Supabase functionality won't work
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
 
 // Protected route component
 interface ProtectedRouteProps {
