@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
@@ -24,6 +25,11 @@ const ImageUploader = ({
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
+      // Check if Supabase client is available
+      if (!supabase) {
+        throw new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+      }
+      
       setUploading(true);
       
       if (!event.target.files || event.target.files.length === 0) {

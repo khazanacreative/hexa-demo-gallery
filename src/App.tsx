@@ -18,10 +18,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient(
-  supabaseUrl || '',  // Provide empty string as fallback to prevent errors
-  supabaseAnonKey || ''
-);
+// Create a dummy client if environment variables are missing
+// This allows the app to at least load, though Supabase functionality won't work
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 const App = () => {
   // Create a client inside the component
