@@ -9,10 +9,19 @@ import NotFound from "./pages/NotFound";
 import React from "react";
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client - this ensures we can use Supabase globally
-export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize Supabase client with environment variables and error handling
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Add validation to ensure we have the required variables
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
+}
+
+export const supabase = createClient(
+  supabaseUrl || '',  // Provide empty string as fallback to prevent errors
+  supabaseAnonKey || ''
+);
 
 const App = () => {
   // Create a client inside the component
