@@ -1,11 +1,8 @@
-
-import { useState } from 'react';
-import { Project, FileUploadResult } from '@/types';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Form } from '@/components/ui/form';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { X, Plus, Link } from 'lucide-react';
 import { allTags } from '@/data/mockData';
@@ -103,198 +100,200 @@ const ProjectForm = ({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Project title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Project description"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-4">
-              <FormItem>
-                <FormLabel>Cover Image</FormLabel>
-                <FormControl>
-                  <ImageUploader 
-                    currentImageUrl={coverImage}
-                    onImageUploaded={handleCoverImageUploaded}
-                    bucketName="project-images"
-                    folderPath="covers"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-              
+        <ScrollArea className="max-h-[70vh] overflow-y-auto px-1">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pr-3">
               <FormField
                 control={form.control}
-                name="demoUrl"
+                name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Demo URL</FormLabel>
+                    <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <div className="flex gap-2">
-                        <Input placeholder="https://" {...field} />
-                        <HexaButton type="button" variant="outline" size="icon" className="flex-shrink-0">
-                          <Link size={16} />
-                        </HexaButton>
-                      </div>
+                      <Input placeholder="Project title" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Project description"
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 gap-4">
                 <FormItem>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>Cover Image</FormLabel>
                   <FormControl>
-                    <select
-                      className="w-full p-2 border border-gray-200 rounded-md"
-                      {...field}
-                    >
-                      <option value="Web App">Web App</option>
-                      <option value="Mobile App">Mobile App</option>
-                      <option value="Website">Website</option>
-                      <option value="Desktop App">Desktop App</option>
-                    </select>
+                    <ImageUploader 
+                      currentImageUrl={coverImage}
+                      onImageUploaded={handleCoverImageUploaded}
+                      bucketName="project-images"
+                      folderPath="covers"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
-
-            <div className="space-y-2">
-              <FormLabel>Screenshots</FormLabel>
-              <div className="space-y-2">
-                {screenshots.map((screenshot, i) => (
-                  <div key={i}>
-                    <ImageUploader 
-                      currentImageUrl={screenshot}
-                      onImageUploaded={(result) => handleScreenshotUploaded(i, result)}
-                      bucketName="project-images"
-                      folderPath="screenshots"
-                      className="mb-2"
-                    />
-                    {screenshots.length > 1 && (
-                      <HexaButton
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeScreenshot(i)}
-                        className="mb-2"
-                      >
-                        <X size={16} className="mr-1" />
-                        Remove Screenshot
-                      </HexaButton>
-                    )}
-                  </div>
-                ))}
-                <HexaButton
-                  type="button"
-                  variant="outline"
-                  onClick={addScreenshot}
-                  className="w-full mt-2"
-                >
-                  <Plus size={16} className="mr-2" />
-                  Add Screenshot
-                </HexaButton>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <FormLabel>Tags</FormLabel>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {selectedTags.map(tag => (
-                  <div key={tag} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                    <span>{tag}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add new tag"
-                  value={newTag}
-                  onChange={e => setNewTag(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
+                
+                <FormField
+                  control={form.control}
+                  name="demoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Demo URL</FormLabel>
+                      <FormControl>
+                        <div className="flex gap-2">
+                          <Input placeholder="https://" {...field} />
+                          <HexaButton type="button" variant="outline" size="icon" className="flex-shrink-0">
+                            <Link size={16} />
+                          </HexaButton>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <HexaButton
-                  type="button"
-                  onClick={addTag}
-                  variant="outline"
-                  size="icon"
-                >
-                  <Plus size={16} />
-                </HexaButton>
               </div>
-              <div className="mt-2">
-                <p className="text-sm text-gray-500 mb-1">Common tags:</p>
-                <div className="flex flex-wrap gap-1">
-                  {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 10).map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      className="bg-secondary text-foreground px-2 py-0.5 rounded-full text-xs"
-                      onClick={() => toggleTag(tag)}
-                    >
-                      {tag}
-                    </button>
+
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <select
+                        className="w-full p-2 border border-gray-200 rounded-md"
+                        {...field}
+                      >
+                        <option value="Web App">Web App</option>
+                        <option value="Mobile App">Mobile App</option>
+                        <option value="Website">Website</option>
+                        <option value="Desktop App">Desktop App</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-2">
+                <FormLabel>Screenshots</FormLabel>
+                <div className="space-y-2">
+                  {screenshots.map((screenshot, i) => (
+                    <div key={i}>
+                      <ImageUploader 
+                        currentImageUrl={screenshot}
+                        onImageUploaded={(result) => handleScreenshotUploaded(i, result)}
+                        bucketName="project-images"
+                        folderPath="screenshots"
+                        className="mb-2"
+                      />
+                      {screenshots.length > 1 && (
+                        <HexaButton
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeScreenshot(i)}
+                          className="mb-2"
+                        >
+                          <X size={16} className="mr-1" />
+                          Remove Screenshot
+                        </HexaButton>
+                      )}
+                    </div>
                   ))}
+                  <HexaButton
+                    type="button"
+                    variant="outline"
+                    onClick={addScreenshot}
+                    className="w-full mt-2"
+                  >
+                    <Plus size={16} className="mr-2" />
+                    Add Screenshot
+                  </HexaButton>
                 </div>
               </div>
-            </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <HexaButton type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </HexaButton>
-              <HexaButton type="submit" variant="hexa">
-                {defaultValues ? 'Update Project' : 'Add Project'}
-              </HexaButton>
-            </div>
-          </form>
-        </Form>
+              <div className="space-y-2">
+                <FormLabel>Tags</FormLabel>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedTags.map(tag => (
+                    <div key={tag} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                      <span>{tag}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add new tag"
+                    value={newTag}
+                    onChange={e => setNewTag(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag();
+                      }
+                    }}
+                  />
+                  <HexaButton
+                    type="button"
+                    onClick={addTag}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <Plus size={16} />
+                  </HexaButton>
+                </div>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500 mb-1">Common tags:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 10).map(tag => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className="bg-secondary text-foreground px-2 py-0.5 rounded-full text-xs"
+                        onClick={() => toggleTag(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <HexaButton type="button" variant="outline" onClick={onClose}>
+                  Cancel
+                </HexaButton>
+                <HexaButton type="submit" variant="hexa">
+                  {defaultValues ? 'Update Project' : 'Add Project'}
+                </HexaButton>
+              </div>
+            </form>
+          </Form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
