@@ -34,7 +34,8 @@ const ProjectGallery = () => {
     toggleTagSelection
   } = useProjects();
   
-  const isAdmin = currentUser.role === 'admin';
+  // Safe check for currentUser being null
+  const isAdmin = currentUser?.role === 'admin';
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
@@ -74,9 +75,9 @@ const ProjectGallery = () => {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-gradient-to-r from-hexa-red/10 to-hexa-dark-red/10 px-3 py-1.5 rounded-full text-sm">
             <span className="w-2 h-2 rounded-full animate-hexa-pulse" 
-                  style={{backgroundColor: currentUser.role === 'admin' ? '#ea384c' : '#555555'}}></span>
+                  style={{backgroundColor: isAdmin ? '#ea384c' : '#555555'}}></span>
             <span className="font-medium">
-              {currentUser.role === 'admin' ? 'Admin' : 'User'} View
+              {isAdmin ? 'Admin' : 'User'} View
             </span>
           </div>
           

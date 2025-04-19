@@ -15,7 +15,7 @@ interface ProjectCardProps {
 
 const ProjectCard = ({ project, onClick, onEdit, onDelete }: ProjectCardProps) => {
   const { currentUser } = useAuth();
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <Card className="overflow-hidden transition-all duration-300 border border-gray-200 hover:border-hexa-red h-full flex flex-col shadow-sm hover:shadow-hexa animate-scale-in">

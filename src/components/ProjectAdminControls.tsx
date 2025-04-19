@@ -16,7 +16,7 @@ const ProjectAdminControls = ({
   onDelete
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
 
   if (!isAdmin) return null;
 
