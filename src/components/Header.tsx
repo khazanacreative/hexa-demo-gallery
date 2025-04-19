@@ -23,25 +23,12 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <h1 className="text-2xl font-bold">HEXA Demo Gallery</h1>
+            <h1 className="text-2xl font-bold">Hexa Demo Gallery</h1>
           </Link>
-          <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Showcase</span>
         </div>
                        
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3 mr-2">
-            <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-              <Search size={18} />
-            </button>
             
-            {isAdmin && (
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors relative">
-                <Users size={18} />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full"></span>
-              </button>
-            )}
-          </div>
-          
           {isAdmin && (
             <Link to="/users">
               <HexaButton 
