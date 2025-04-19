@@ -54,7 +54,7 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
           </DialogHeader>
         </div>
 
-        <ScrollArea className="max-h-[70vh] w-full">
+        <ScrollArea className="max-h-[70vh] overflow-y-auto px-1">
           <div className="p-6">
             <div className="relative aspect-video bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg overflow-hidden mb-6">
               <img 
