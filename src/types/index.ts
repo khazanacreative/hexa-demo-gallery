@@ -7,20 +7,7 @@ export interface Project {
   screenshots: string[];
   demoUrl: string;
   category: string;
-  tags: string[];  // Added tags field for better filtering
+  tags: string[];
+  features: string[]; // Added features field
   createdAt: string;
-}
-
-export type UserRole = 'admin' | 'user';
-
-export interface User {
-  id: string;
-  name: string;
-  role: UserRole;
-  email?: string; // Added email field
-}
-
-export interface FileUploadResult {
-  path: string;
-  url: string;
 }

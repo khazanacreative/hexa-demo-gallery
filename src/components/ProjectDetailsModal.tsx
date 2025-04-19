@@ -1,4 +1,3 @@
-
 import { Project } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ExternalLink, ChevronLeft, ChevronRight, Star, MessageSquare, Share2, Edit } from 'lucide-react';
@@ -27,10 +26,8 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetail
   const { updateProject } = useProjects();
 
   useEffect(() => {
-    // Reset current image index when project changes
     setCurrentImageIndex(0);
     
-    // Check if project is favorited by the current user
     const checkFavoriteStatus = async () => {
       if (!project || !currentUser) return;
       
@@ -86,7 +83,6 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetail
       setIsLoading(true);
       
       if (isFavorited) {
-        // Remove favorite
         await supabase
           .from('favorites')
           .delete()
@@ -98,7 +94,6 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetail
           description: `${project.title} has been removed from your favorites.`,
         });
       } else {
-        // Add favorite
         await supabase
           .from('favorites')
           .insert({
@@ -192,17 +187,14 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetail
             <h3 className="text-lg font-semibold mb-2">Description</h3>
             <p className="text-gray-700 mb-6">{project.description}</p>
 
-            {/* Tags */}
-            {project.tags && project.tags.length > 0 && (
+            {project.features && project.features.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-semibold mb-2">Tags</h3>
-                <div className="flex flex-wrap gap-2">
-                  {project.tags.map(tag => (
-                    <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                      {tag}
-                    </span>
+                <h3 className="text-sm font-semibold mb-2">Key Features</h3>
+                <ul className="space-y-2 pl-4 list-disc text-gray-700">
+                  {project.features.map((feature, index) => (
+                    <li key={index}>{feature}</li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
 

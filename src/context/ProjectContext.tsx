@@ -48,6 +48,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             demoUrl: item.demo_url || '',
             category: item.category || '',
             tags: item.tags || [],
+            features: item.features || [],
             createdAt: item.created_at
           }));
           
@@ -74,10 +75,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const addProject = useCallback((projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
     if ('id' in projectData && 'createdAt' in projectData) {
       setProjects(prev => [projectData as Project, ...prev]);
-      toast({
-        title: "Project added",
-        description: `${projectData.title} has been added successfully.`,
-      });
       return;
     }
     
@@ -85,6 +82,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       ...projectData as Omit<Project, 'id' | 'createdAt'>,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
+      features: (projectData as Omit<Project, 'id' | 'createdAt'>).features || []
     };
     
     setProjects(prev => [newProject, ...prev]);

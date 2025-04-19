@@ -78,6 +78,7 @@ export type Database = {
           created_at: string | null
           demo_url: string | null
           description: string | null
+          features: string[] | null
           id: string
           screenshots: string[] | null
           tags: string[] | null
@@ -91,6 +92,7 @@ export type Database = {
           created_at?: string | null
           demo_url?: string | null
           description?: string | null
+          features?: string[] | null
           id?: string
           screenshots?: string[] | null
           tags?: string[] | null
@@ -104,6 +106,7 @@ export type Database = {
           created_at?: string | null
           demo_url?: string | null
           description?: string | null
+          features?: string[] | null
           id?: string
           screenshots?: string[] | null
           tags?: string[] | null

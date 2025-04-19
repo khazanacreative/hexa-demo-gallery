@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -37,6 +36,10 @@ const ProjectForm = ({
     defaultValues?.tags || []
   );
   const [coverImage, setCoverImage] = useState(defaultValues?.coverImage || '/placeholder.svg');
+  const [features, setFeatures] = useState<string[]>(
+    defaultValues?.features || []
+  );
+  const [newFeature, setNewFeature] = useState('');
 
   const form = useForm<ProjectFormValues>({
     defaultValues: defaultValues || {
@@ -47,6 +50,7 @@ const ProjectForm = ({
       demoUrl: 'https://example.com',
       category: 'Web App',
       tags: [],
+      features: [],
     },
   });
 
@@ -87,12 +91,24 @@ const ProjectForm = ({
     setScreenshots(newScreenshots);
   };
 
+  const addFeature = () => {
+    if (newFeature && !features.includes(newFeature)) {
+      setFeatures([...features, newFeature]);
+      setNewFeature('');
+    }
+  };
+
+  const removeFeature = (feature: string) => {
+    setFeatures(features.filter(f => f !== feature));
+  };
+
   const handleSubmit = (data: ProjectFormValues) => {
     onSubmit({
       ...data,
       coverImage,
       screenshots,
       tags: selectedTags,
+      features,
     });
     onClose();
   };
@@ -284,6 +300,45 @@ const ProjectForm = ({
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Key Features</FormLabel>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {features.map(feature => (
+                    <div key={feature} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                      <span>{feature}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFeature(feature)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add key feature"
+                    value={newFeature}
+                    onChange={e => setNewFeature(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addFeature();
+                      }
+                    }}
+                  />
+                  <HexaButton
+                    type="button"
+                    onClick={addFeature}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <Plus size={16} />
+                  </HexaButton>
                 </div>
               </div>
 
