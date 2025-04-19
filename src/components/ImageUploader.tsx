@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
@@ -39,6 +40,20 @@ const ImageUploader = ({
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 11)}_${Date.now()}.${fileExt}`;
       const filePath = `${folderPath}/${fileName}`;
+
+      // Check if bucket exists, create if not
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+      
+      if (!bucketExists) {
+        const { error: createBucketError } = await supabase.storage.createBucket(bucketName, {
+          public: true
+        });
+        
+        if (createBucketError) {
+          console.error('Error creating bucket:', createBucketError);
+        }
+      }
 
       // Upload image to Supabase Storage
       const { data, error } = await supabase.storage

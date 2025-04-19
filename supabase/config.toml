@@ -1,1 +1,6 @@
+
 project_id = "svqjeqngyindshuxjurp"
+
+[storage]
+[storage.project-images]
+public = true
