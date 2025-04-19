@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
 import { Separator } from './ui/separator';
+import { ScrollArea } from './ui/scroll-area';
 
 interface ProjectDetailsModalProps {
   project: Project | null;
@@ -16,7 +17,7 @@ interface ProjectDetailsModalProps {
 const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { currentUser } = useAuth();
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
 
   if (!project) return null;
 
@@ -53,118 +54,120 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
           </DialogHeader>
         </div>
 
-        <div className="p-6">
-          <div className="relative aspect-video bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg overflow-hidden mb-6">
-            <img 
-              src={project.screenshots[currentImageIndex]} 
-              alt={`Screenshot ${currentImageIndex + 1}`}
-              className="w-full h-full object-contain"
-            />
-            
-            {project.screenshots.length > 1 && (
-              <>
-                <HexaButton 
-                  variant="ghost" 
-                  size="icon"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9"
-                  onClick={prevImage}
-                >
-                  <ChevronLeft size={18} />
-                </HexaButton>
-                <HexaButton 
-                  variant="ghost" 
-                  size="icon"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9"
-                  onClick={nextImage}
-                >
-                  <ChevronRight size={18} />
-                </HexaButton>
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                  {project.screenshots.map((_, i) => (
-                    <button 
-                      key={i}
-                      className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
-                        i === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
-                      }`}
-                      onClick={() => setCurrentImageIndex(i)}
-                      aria-label={`View screenshot ${i+1}`}
-                    />
+        <ScrollArea className="max-h-[70vh] w-full">
+          <div className="p-6">
+            <div className="relative aspect-video bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg overflow-hidden mb-6">
+              <img 
+                src={project.screenshots[currentImageIndex]} 
+                alt={`Screenshot ${currentImageIndex + 1}`}
+                className="w-full h-full object-contain"
+              />
+              
+              {project.screenshots.length > 1 && (
+                <>
+                  <HexaButton 
+                    variant="ghost" 
+                    size="icon"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9"
+                    onClick={prevImage}
+                  >
+                    <ChevronLeft size={18} />
+                  </HexaButton>
+                  <HexaButton 
+                    variant="ghost" 
+                    size="icon"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-9 h-9"
+                    onClick={nextImage}
+                  >
+                    <ChevronRight size={18} />
+                  </HexaButton>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {project.screenshots.map((_, i) => (
+                      <button 
+                        key={i}
+                        className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer ${
+                          i === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/80'
+                        }`}
+                        onClick={() => setCurrentImageIndex(i)}
+                        aria-label={`View screenshot ${i+1}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <h3 className="text-lg font-semibold mb-2">Description</h3>
+            <p className="text-gray-700 mb-6">{project.description}</p>
+
+            {/* Tags */}
+            {project.tags && project.tags.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold mb-2">Tags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {project.tags.map(tag => (
+                    <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                      {tag}
+                    </span>
                   ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3 items-center justify-between mt-6">
+              <div className="flex gap-2">
+                <HexaButton variant="outline" size="sm" className="gap-1">
+                  <Star size={14} />
+                  <span>Favorite</span>
+                </HexaButton>
+                
+                {isAdmin && (
+                  <HexaButton variant="outline" size="sm" className="gap-1">
+                    <Edit size={14} />
+                    <span>Edit Details</span>
+                  </HexaButton>
+                )}
+              </div>
+
+              <HexaButton 
+                variant="hexa" 
+                className="gap-2"
+                asChild
+              >
+                <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink size={16} />
+                  <span>Visit Demo</span>
+                </a>
+              </HexaButton>
+            </div>
+            
+            {isAdmin && (
+              <>
+                <Separator className="my-5" />
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
+                    <span className="w-2 h-2 bg-hexa-red rounded-full"></span>
+                    Admin Analytics
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="bg-white p-2 rounded border border-gray-100">
+                      <p className="text-xs text-gray-500">Views</p>
+                      <p className="font-semibold">1,452</p>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-gray-100">
+                      <p className="text-xs text-gray-500">Demo Clicks</p>
+                      <p className="font-semibold">287</p>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-gray-100">
+                      <p className="text-xs text-gray-500">Favorites</p>
+                      <p className="font-semibold">64</p>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
           </div>
-
-          <h3 className="text-lg font-semibold mb-2">Description</h3>
-          <p className="text-gray-700 mb-6">{project.description}</p>
-
-          {/* Tags */}
-          {project.tags && project.tags.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold mb-2">Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {project.tags.map(tag => (
-                  <span key={tag} className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-3 items-center justify-between mt-6">
-            <div className="flex gap-2">
-              <HexaButton variant="outline" size="sm" className="gap-1">
-                <Star size={14} />
-                <span>Favorite</span>
-              </HexaButton>
-              
-              {isAdmin && (
-                <HexaButton variant="outline" size="sm" className="gap-1">
-                  <Edit size={14} />
-                  <span>Edit Details</span>
-                </HexaButton>
-              )}
-            </div>
-
-            <HexaButton 
-              variant="hexa" 
-              className="gap-2"
-              asChild
-            >
-              <a href={project.demoUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink size={16} />
-                <span>Visit Demo</span>
-              </a>
-            </HexaButton>
-          </div>
-          
-          {isAdmin && (
-            <>
-              <Separator className="my-5" />
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h4 className="text-sm font-semibold mb-2 flex items-center gap-1">
-                  <span className="w-2 h-2 bg-hexa-red rounded-full"></span>
-                  Admin Analytics
-                </h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="bg-white p-2 rounded border border-gray-100">
-                    <p className="text-xs text-gray-500">Views</p>
-                    <p className="font-semibold">1,452</p>
-                  </div>
-                  <div className="bg-white p-2 rounded border border-gray-100">
-                    <p className="text-xs text-gray-500">Demo Clicks</p>
-                    <p className="font-semibold">287</p>
-                  </div>
-                  <div className="bg-white p-2 rounded border border-gray-100">
-                    <p className="text-xs text-gray-500">Favorites</p>
-                    <p className="font-semibold">64</p>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
