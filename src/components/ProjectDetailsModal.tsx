@@ -2,22 +2,54 @@
 import { Project } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ExternalLink, ChevronLeft, ChevronRight, Star, MessageSquare, Share2, Edit } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
 import { Separator } from './ui/separator';
 import { ScrollArea } from './ui/scroll-area';
+import { useProjects } from '@/context/ProjectContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 interface ProjectDetailsModalProps {
   project: Project | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: () => void;
 }
 
-const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalProps) => {
+const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetailsModalProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
+  const { updateProject } = useProjects();
+
+  useEffect(() => {
+    // Reset current image index when project changes
+    setCurrentImageIndex(0);
+    
+    // Check if project is favorited by the current user
+    const checkFavoriteStatus = async () => {
+      if (!project || !currentUser) return;
+      
+      try {
+        const { data } = await supabase
+          .from('favorites')
+          .select('id')
+          .eq('project_id', project.id)
+          .eq('user_id', currentUser.id)
+          .single();
+        
+        setIsFavorited(!!data);
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+      }
+    };
+    
+    checkFavoriteStatus();
+  }, [project, currentUser]);
 
   if (!project) return null;
 
@@ -31,6 +63,66 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
     setCurrentImageIndex((prev) => 
       prev === 0 ? project.screenshots.length - 1 : prev - 1
     );
+  };
+
+  const handleEditClick = () => {
+    onClose();
+    if (onEdit) {
+      onEdit();
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!currentUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to favorite projects.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      if (isFavorited) {
+        // Remove favorite
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('project_id', project.id)
+          .eq('user_id', currentUser.id);
+          
+        toast({
+          title: "Removed from favorites",
+          description: `${project.title} has been removed from your favorites.`,
+        });
+      } else {
+        // Add favorite
+        await supabase
+          .from('favorites')
+          .insert({
+            project_id: project.id,
+            user_id: currentUser.id
+          });
+          
+        toast({
+          title: "Added to favorites",
+          description: `${project.title} has been added to your favorites.`,
+        });
+      }
+      
+      setIsFavorited(!isFavorited);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Action failed",
+        description: "There was an error processing your request.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -116,13 +208,24 @@ const ProjectDetailsModal = ({ project, isOpen, onClose }: ProjectDetailsModalPr
 
             <div className="flex flex-wrap gap-3 items-center justify-between mt-6">
               <div className="flex gap-2">
-                <HexaButton variant="outline" size="sm" className="gap-1">
-                  <Star size={14} />
-                  <span>Favorite</span>
+                <HexaButton 
+                  variant={isFavorited ? "hexa" : "outline"} 
+                  size="sm" 
+                  className="gap-1"
+                  onClick={toggleFavorite}
+                  disabled={isLoading}
+                >
+                  <Star size={14} className={isFavorited ? "fill-white" : ""} />
+                  <span>{isFavorited ? "Favorited" : "Favorite"}</span>
                 </HexaButton>
                 
                 {isAdmin && (
-                  <HexaButton variant="outline" size="sm" className="gap-1">
+                  <HexaButton 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-1"
+                    onClick={handleEditClick}
+                  >
                     <Edit size={14} />
                     <span>Edit Details</span>
                   </HexaButton>

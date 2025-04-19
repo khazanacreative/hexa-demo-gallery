@@ -1,8 +1,8 @@
-
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectContextType {
   projects: Project[];
@@ -10,7 +10,7 @@ interface ProjectContextType {
   searchQuery: string;
   selectedCategory: string | null;
   selectedTags: string[];
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt'> | Project) => void;
   updateProject: (project: Project) => void;
   deleteProject: (id: string) => void;
   setSearchQuery: (query: string) => void;
@@ -21,14 +21,68 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addProject = useCallback((projectData: Omit<Project, 'id' | 'createdAt'>) => {
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setIsLoading(true);
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const fetchedProjects: Project[] = data.map(item => ({
+            id: item.id,
+            title: item.title,
+            description: item.description || '',
+            coverImage: item.cover_image || '',
+            screenshots: item.screenshots || [],
+            demoUrl: item.demo_url || '',
+            category: item.category || '',
+            tags: item.tags || [],
+            createdAt: item.created_at
+          }));
+          
+          setProjects(fetchedProjects);
+        } else {
+          setProjects(initialProjects);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load projects",
+          variant: "destructive"
+        });
+        setProjects(initialProjects);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProjects();
+  }, []);
+
+  const addProject = useCallback((projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
+    if ('id' in projectData && 'createdAt' in projectData) {
+      setProjects(prev => [projectData as Project, ...prev]);
+      toast({
+        title: "Project added",
+        description: `${projectData.title} has been added successfully.`,
+      });
+      return;
+    }
+    
     const newProject: Project = {
-      ...projectData,
+      ...projectData as Omit<Project, 'id' | 'createdAt'>,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
     };
@@ -68,18 +122,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
-  // Apply filters and search to get filtered projects
   const filteredProjects = projects.filter(project => {
-    // Apply search filter
     const matchesSearch = searchQuery === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    // Apply category filter
     const matchesCategory = selectedCategory === null || project.category === selectedCategory;
     
-    // Apply tags filter
     const matchesTags = selectedTags.length === 0 || 
       selectedTags.every(tag => project.tags.includes(tag));
     
@@ -102,7 +152,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         toggleTagSelection
       }}
     >
-      {children}
+      {isLoading ? (
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
+        </div>
+      ) : (
+        children
+      )}
     </ProjectContext.Provider>
   );
 };

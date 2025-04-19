@@ -11,6 +11,8 @@ import { HexaButton } from './ui/hexa-button';
 import { Input } from './ui/input';
 import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
 import { allTags } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 const ProjectGallery = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -58,6 +60,107 @@ const ProjectGallery = () => {
 
   const handleAddNewProject = () => {
     setIsAddFormOpen(true);
+  };
+
+  // Synchronize data with Supabase when adding/updating projects
+  const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+    try {
+      // Add project to Supabase
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          title: projectData.title,
+          description: projectData.description,
+          cover_image: projectData.coverImage,
+          screenshots: projectData.screenshots,
+          demo_url: projectData.demoUrl,
+          category: projectData.category,
+          tags: projectData.tags,
+          user_id: currentUser?.id
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      if (data) {
+        // Convert to our Project type
+        const newProject: Project = {
+          id: data.id,
+          title: data.title,
+          description: data.description || '',
+          coverImage: data.cover_image || '',
+          screenshots: data.screenshots || [],
+          demoUrl: data.demo_url || '',
+          category: data.category || '',
+          tags: data.tags || [],
+          createdAt: data.created_at
+        };
+        
+        // Add to local state
+        addProject(newProject);
+      }
+    } catch (error) {
+      console.error('Error adding project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add project to database",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUpdateProject = async (updatedProject: Project) => {
+    try {
+      // Update project in Supabase
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          title: updatedProject.title,
+          description: updatedProject.description,
+          cover_image: updatedProject.coverImage,
+          screenshots: updatedProject.screenshots,
+          demo_url: updatedProject.demoUrl,
+          category: updatedProject.category,
+          tags: updatedProject.tags,
+          updated_at: new Date()
+        })
+        .eq('id', updatedProject.id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      updateProject(updatedProject);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update project in database",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteProjectConfirm = async (id: string) => {
+    try {
+      // Delete project from Supabase
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      // Delete from local state
+      deleteProject(id);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete project from database",
+        variant: "destructive"
+      });
+    }
   };
 
   // Extract unique categories
@@ -183,7 +286,8 @@ const ProjectGallery = () => {
       <ProjectDetailsModal 
         project={selectedProject} 
         isOpen={isModalOpen} 
-        onClose={closeModal} 
+        onClose={closeModal}
+        onEdit={() => selectedProject && handleEditProject(selectedProject)}
       />
       
       {/* Add Project Form */}
@@ -191,7 +295,7 @@ const ProjectGallery = () => {
         <ProjectForm
           isOpen={isAddFormOpen}
           onClose={() => setIsAddFormOpen(false)}
-          onSubmit={addProject}
+          onSubmit={handleAddProject}
           title="Add New Project"
         />
       )}
@@ -201,7 +305,7 @@ const ProjectGallery = () => {
         <ProjectForm
           isOpen={isEditFormOpen}
           onClose={() => setIsEditFormOpen(false)}
-          onSubmit={(data) => updateProject({ ...data, id: selectedProject.id, createdAt: selectedProject.createdAt })}
+          onSubmit={handleUpdateProject}
           defaultValues={selectedProject}
           title="Edit Project"
         />
@@ -212,7 +316,7 @@ const ProjectGallery = () => {
         project={projectToDelete}
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={() => projectToDelete && deleteProject(projectToDelete.id)}
+        onConfirm={() => projectToDelete && handleDeleteProjectConfirm(projectToDelete.id)}
       />
     </div>
   );

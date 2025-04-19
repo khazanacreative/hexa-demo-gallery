@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -98,12 +99,12 @@ const ProjectForm = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={isOpen => !isOpen && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl w-[90vw]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="max-h-[70vh] overflow-y-auto px-1">
+        <ScrollArea className="max-h-[75vh] overflow-y-auto px-1">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pr-3">
               <FormField

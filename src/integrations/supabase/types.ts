@@ -9,6 +9,35 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          created_at: string | null
+          id: string
+          project_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          project_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pages: {
         Row: {
           content: Json | null
@@ -39,6 +68,48 @@ export type Database = {
           slug?: string
           title?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          category: string | null
+          cover_image: string | null
+          created_at: string | null
+          demo_url: string | null
+          description: string | null
+          id: string
+          screenshots: string[] | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          cover_image?: string | null
+          created_at?: string | null
+          demo_url?: string | null
+          description?: string | null
+          id?: string
+          screenshots?: string[] | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          cover_image?: string | null
+          created_at?: string | null
+          demo_url?: string | null
+          description?: string | null
+          id?: string
+          screenshots?: string[] | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
