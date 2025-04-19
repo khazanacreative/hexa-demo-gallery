@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -36,7 +35,6 @@ const ProjectGallery = () => {
     toggleTagSelection
   } = useProjects();
   
-  // Safe check for currentUser being null
   const isAdmin = currentUser?.role === 'admin';
 
   const handleProjectClick = (project: Project) => {
@@ -62,10 +60,8 @@ const ProjectGallery = () => {
     setIsAddFormOpen(true);
   };
 
-  // Synchronize data with Supabase when adding/updating projects
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     try {
-      // Add project to Supabase
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -76,6 +72,7 @@ const ProjectGallery = () => {
           demo_url: projectData.demoUrl,
           category: projectData.category,
           tags: projectData.tags,
+          features: projectData.features,
           user_id: currentUser?.id
         })
         .select()
@@ -84,7 +81,6 @@ const ProjectGallery = () => {
       if (error) throw error;
       
       if (data) {
-        // Convert to our Project type
         const newProject: Project = {
           id: data.id,
           title: data.title,
@@ -94,10 +90,10 @@ const ProjectGallery = () => {
           demoUrl: data.demo_url || '',
           category: data.category || '',
           tags: data.tags || [],
+          features: data.features || [],
           createdAt: data.created_at
         };
         
-        // Add to local state
         addProject(newProject);
       }
     } catch (error) {
@@ -112,7 +108,6 @@ const ProjectGallery = () => {
 
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
-      // Update project in Supabase
       const { error } = await supabase
         .from('projects')
         .update({
@@ -123,13 +118,13 @@ const ProjectGallery = () => {
           demo_url: updatedProject.demoUrl,
           category: updatedProject.category,
           tags: updatedProject.tags,
-          updated_at: new Date()
+          features: updatedProject.features,
+          updated_at: new Date().toISOString()
         })
         .eq('id', updatedProject.id);
         
       if (error) throw error;
       
-      // Update local state
       updateProject(updatedProject);
     } catch (error) {
       console.error('Error updating project:', error);
@@ -143,7 +138,6 @@ const ProjectGallery = () => {
 
   const handleDeleteProjectConfirm = async (id: string) => {
     try {
-      // Delete project from Supabase
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -151,7 +145,6 @@ const ProjectGallery = () => {
         
       if (error) throw error;
       
-      // Delete from local state
       deleteProject(id);
     } catch (error) {
       console.error('Error deleting project:', error);
@@ -163,7 +156,6 @@ const ProjectGallery = () => {
     }
   };
 
-  // Extract unique categories
   const categories = Array.from(
     new Set(filteredProjects.map(p => p.category))
   );
@@ -193,7 +185,6 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      {/* Search Bar */}
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -214,7 +205,6 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      {/* Category Filters */}
       <div className="mb-4 flex flex-wrap gap-2">
         <HexaButton 
           variant={selectedCategory === null ? "hexa" : "outline"}
@@ -240,7 +230,6 @@ const ProjectGallery = () => {
         ))}
       </div>
       
-      {/* Tag Filters */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Tag size={16} className="text-gray-500" />
@@ -263,7 +252,6 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      {/* Project Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProjects.map((project) => (
           <ProjectCard 
@@ -282,7 +270,6 @@ const ProjectGallery = () => {
         </div>
       )}
 
-      {/* Project Details Modal */}
       <ProjectDetailsModal 
         project={selectedProject} 
         isOpen={isModalOpen} 
@@ -290,7 +277,6 @@ const ProjectGallery = () => {
         onEdit={() => selectedProject && handleEditProject(selectedProject)}
       />
       
-      {/* Add Project Form */}
       {isAddFormOpen && (
         <ProjectForm
           isOpen={isAddFormOpen}
@@ -300,7 +286,6 @@ const ProjectGallery = () => {
         />
       )}
       
-      {/* Edit Project Form */}
       {isEditFormOpen && selectedProject && (
         <ProjectForm
           isOpen={isEditFormOpen}
@@ -311,7 +296,6 @@ const ProjectGallery = () => {
         />
       )}
       
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmationDialog
         project={projectToDelete}
         isOpen={isDeleteDialogOpen}

@@ -13,7 +13,7 @@ interface UserCreationData {
   name: string;
   email: string;
   password: string;
-  role: UserRole; // Using the specific UserRole type
+  role: UserRole;
 }
 
 interface AuthContextType {

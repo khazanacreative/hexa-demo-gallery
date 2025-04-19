@@ -11,6 +11,7 @@ export const projects: Project[] = [
     demoUrl: 'https://example.com/demo1',
     category: 'Web App',
     tags: ['dashboard', 'admin', 'visualization', 'react'],
+    features: ['Real-time data visualization', 'User management', 'Advanced analytics'],
     createdAt: '2023-10-15',
   },
   {
@@ -22,6 +23,7 @@ export const projects: Project[] = [
     demoUrl: 'https://example.com/demo2',
     category: 'Mobile App',
     tags: ['mobile', 'environment', 'sustainability', 'tracking'],
+    features: ['Carbon footprint tracking', 'Eco-tips', 'Sustainability score'],
     createdAt: '2023-11-20',
   },
   {
@@ -33,6 +35,7 @@ export const projects: Project[] = [
     demoUrl: 'https://example.com/demo3',
     category: 'Website',
     tags: ['portfolio', 'gallery', 'creative', 'animation'],
+    features: ['Interactive galleries', 'Animation effects', 'Custom scrolling'],
     createdAt: '2024-01-05',
   },
   {
@@ -44,6 +47,7 @@ export const projects: Project[] = [
     demoUrl: 'https://example.com/demo4',
     category: 'Web App',
     tags: ['finance', 'analytics', 'reporting', 'fintech'],
+    features: ['Expense tracking', 'Budget planning', 'Investment insights'],
     createdAt: '2024-02-18',
   },
   {
@@ -55,6 +59,7 @@ export const projects: Project[] = [
     demoUrl: 'https://example.com/demo5',
     category: 'Mobile App',
     tags: ['health', 'fitness', 'tracking', 'ai', 'mobile'],
+    features: ['Exercise tracking', 'Nutrition plans', 'Sleep monitoring'],
     createdAt: '2024-03-10',
   },
   {
@@ -66,6 +71,7 @@ export const projects: Project[] = [
     demoUrl: 'https://example.com/demo6',
     category: 'Website',
     tags: ['ecommerce', 'shopping', 'nextjs', 'payment'],
+    features: ['Payment processing', 'Inventory management', 'Customer accounts'],
     createdAt: '2024-04-05',
   },
 ];
