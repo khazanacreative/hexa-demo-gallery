@@ -17,10 +17,10 @@ const IndexContent = () => {
           <div className="container mx-auto max-w-7xl">
             <div className="text-center mb-12 animate-fade-in">
               <span className="inline-block px-4 py-1 bg-gradient-to-r from-hexa-red/10 to-hexa-dark-red/10 rounded-full text-sm text-gray-700 mb-4">
-                Modern Application Gallery
+                Portofolio Kami
               </span>
               <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-hexa-red to-hexa-dark-red bg-clip-text text-transparent mb-4">
-                HEXA Demo Gallery
+                Hexa Demo Gallery
               </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
                 Discover beautiful applications and websites crafted with modern design principles.
