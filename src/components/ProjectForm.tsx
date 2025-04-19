@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form } from '@/components/ui/form';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { X, Plus, Link } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
+import { Project, FileUploadResult } from '@/types';
 
 type ProjectFormValues = Omit<Project, 'id' | 'createdAt'>;
 
