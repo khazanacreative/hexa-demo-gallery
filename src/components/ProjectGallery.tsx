@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -115,6 +116,8 @@ const ProjectGallery = () => {
 
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
+      console.log('Updating project with ID:', updatedProject.id);
+      
       const { error } = await supabase
         .from('projects')
         .update({
@@ -140,6 +143,9 @@ const ProjectGallery = () => {
         title: "Project berhasil diperbarui",
         description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
       });
+      
+      // Close the edit form after successful update
+      setIsEditFormOpen(false);
     } catch (error) {
       console.error('Error updating project:', error);
       toast({
@@ -152,6 +158,8 @@ const ProjectGallery = () => {
 
   const handleDeleteProjectConfirm = async (id: string) => {
     try {
+      console.log('Deleting project with ID:', id);
+      
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -167,6 +175,9 @@ const ProjectGallery = () => {
         title: "Project berhasil dihapus",
         description: "Project telah dihapus dari database.",
       });
+      
+      // Close the delete dialog after successful deletion
+      setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({

@@ -63,12 +63,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
           setProjects(fetchedProjects);
         } else {
           console.log('No projects found in database, using initial data');
-          // Make sure initialProjects has features array
-          const projectsWithFeatures = initialProjects.map(p => ({
+          // Convert the initial projects to have UUID format IDs
+          const projectsWithUuids = initialProjects.map(p => ({
             ...p,
+            id: crypto.randomUUID(), // Generate proper UUIDs instead of simple strings
             features: p.features || []
           }));
-          setProjects(projectsWithFeatures);
+          setProjects(projectsWithUuids);
         }
       } catch (error) {
         console.error('Error fetching projects:', error);
@@ -78,12 +79,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive"
         });
         
-        // Make sure initialProjects has features array
-        const projectsWithFeatures = initialProjects.map(p => ({
+        // Convert the initial projects to have UUID format IDs
+        const projectsWithUuids = initialProjects.map(p => ({
           ...p,
+          id: crypto.randomUUID(), // Generate proper UUIDs instead of simple strings
           features: p.features || []
         }));
-        setProjects(projectsWithFeatures);
+        setProjects(projectsWithUuids);
       } finally {
         setIsLoading(false);
       }
@@ -100,7 +102,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     
     const newProject: Project = {
       ...projectData as Omit<Project, 'id' | 'createdAt'>,
-      id: Date.now().toString(),
+      id: crypto.randomUUID(), // Generate proper UUID
       createdAt: new Date().toISOString(),
       features: (projectData as Omit<Project, 'id' | 'createdAt'>).features || []
     };
