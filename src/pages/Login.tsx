@@ -51,7 +51,7 @@ const Login = () => {
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg">
         <div className="text-center">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-hexa-red to-hexa-dark-red bg-clip-text text-transparent">
-            HEXA Demo Gallery
+            Galeri Demo Hexa
           </h1>
           <p className="mt-2 text-gray-600">Sign in to access the application</p>
         </div>
