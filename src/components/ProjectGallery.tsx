@@ -9,9 +9,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useProjects } from '@/context/ProjectContext';
 import { HexaButton } from './ui/hexa-button';
 import { Input } from './ui/input';
-import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, Search, X, Tag, RefreshCw } from 'lucide-react';
 import { allTags } from '@/data/mockData';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
 
 const ProjectGallery = () => {
@@ -21,6 +20,7 @@ const ProjectGallery = () => {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { currentUser } = useAuth();
   const { 
@@ -33,7 +33,8 @@ const ProjectGallery = () => {
     selectedCategory,
     setSelectedCategory,
     selectedTags,
-    toggleTagSelection
+    toggleTagSelection,
+    refreshProjects
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
@@ -63,47 +64,8 @@ const ProjectGallery = () => {
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .insert({
-          title: projectData.title,
-          description: projectData.description,
-          cover_image: projectData.coverImage,
-          screenshots: projectData.screenshots,
-          demo_url: projectData.demoUrl,
-          category: projectData.category,
-          tags: projectData.tags,
-          features: projectData.features,
-          user_id: currentUser?.id
-        })
-        .select()
-        .single();
-        
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
-      
-      if (data) {
-        const newProject: Project = {
-          id: data.id,
-          title: data.title,
-          description: data.description || '',
-          coverImage: data.cover_image || '',
-          screenshots: data.screenshots || [],
-          demoUrl: data.demo_url || '',
-          category: data.category || '',
-          tags: data.tags || [],
-          features: data.features || [],
-          createdAt: data.created_at
-        };
-        
-        addProject(newProject);
-        toast({
-          title: "Project berhasil ditambahkan",
-          description: `${newProject.title} telah berhasil disimpan ke database.`,
-        });
-      }
+      await addProject(projectData);
+      setIsAddFormOpen(false);
     } catch (error) {
       console.error('Error adding project:', error);
       toast({
@@ -116,35 +78,7 @@ const ProjectGallery = () => {
 
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
-      console.log('Updating project with ID:', updatedProject.id);
-      
-      const { error } = await supabase
-        .from('projects')
-        .update({
-          title: updatedProject.title,
-          description: updatedProject.description,
-          cover_image: updatedProject.coverImage,
-          screenshots: updatedProject.screenshots,
-          demo_url: updatedProject.demoUrl,
-          category: updatedProject.category,
-          tags: updatedProject.tags,
-          features: updatedProject.features,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', updatedProject.id);
-        
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
-      
-      updateProject(updatedProject);
-      toast({
-        title: "Project berhasil diperbarui",
-        description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
-      });
-      
-      // Close the edit form after successful update
+      await updateProject(updatedProject);
       setIsEditFormOpen(false);
     } catch (error) {
       console.error('Error updating project:', error);
@@ -158,25 +92,7 @@ const ProjectGallery = () => {
 
   const handleDeleteProjectConfirm = async (id: string) => {
     try {
-      console.log('Deleting project with ID:', id);
-      
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', id);
-        
-      if (error) {
-        console.error('Error details:', error);
-        throw error;
-      }
-      
-      deleteProject(id);
-      toast({
-        title: "Project berhasil dihapus",
-        description: "Project telah dihapus dari database.",
-      });
-      
-      // Close the delete dialog after successful deletion
+      await deleteProject(id);
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Error deleting project:', error);
@@ -185,6 +101,26 @@ const ProjectGallery = () => {
         description: "Gagal menghapus project dari database. Silakan coba lagi.",
         variant: "destructive"
       });
+    }
+  };
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshProjects();
+      toast({
+        title: "Refreshed",
+        description: "Data project telah diperbarui dari database.",
+      });
+    } catch (error) {
+      console.error('Error refreshing projects:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memperbarui data dari database.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -207,6 +143,17 @@ const ProjectGallery = () => {
               {isAdmin ? 'Admin' : 'User'} View
             </span>
           </div>
+          
+          <HexaButton 
+            variant="outline" 
+            size="sm" 
+            className="gap-1" 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+          </HexaButton>
           
           {isAdmin && (
             <HexaButton variant="hexa" size="sm" className="gap-1" onClick={handleAddNewProject}>
@@ -306,7 +253,7 @@ const ProjectGallery = () => {
         project={selectedProject} 
         isOpen={isModalOpen} 
         onClose={closeModal}
-        onEdit={() => selectedProject && handleEditProject(selectedProject)}
+        onEdit={isAdmin && selectedProject ? () => handleEditProject(selectedProject) : undefined}
       />
       
       {isAddFormOpen && (

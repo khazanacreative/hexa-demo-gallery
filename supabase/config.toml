@@ -1,1 +1,7 @@
+
 project_id = "svqjeqngyindshuxjurp"
+
+[storage]
+[storage.buckets]
+[storage.buckets.project-images]
+public = true
