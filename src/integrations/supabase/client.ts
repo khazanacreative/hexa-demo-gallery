@@ -23,4 +23,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'x-application-name': 'galeri-hexa',
     },
   },
+  // Add realtime subscription to projects table
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
 });

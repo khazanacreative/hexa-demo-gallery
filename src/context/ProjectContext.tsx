@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
@@ -141,7 +140,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
           tags: newProject.tags,
           features: newProject.features
         })
-        .select('*')
+        .select()
         .single();
       
       if (error) {
@@ -203,33 +202,15 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
       
-      // Re-fetch the project from the database to ensure we have the latest data
-      const { data: refreshedData, error: refreshError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', updatedProject.id)
-        .single();
-      
-      if (refreshError) {
-        console.error('Error fetching updated project:', refreshError);
-        throw refreshError;
-      }
-      
-      const refreshedProject: Project = {
-        id: refreshedData.id,
-        title: refreshedData.title,
-        description: refreshedData.description || '',
-        coverImage: refreshedData.cover_image || '',
-        screenshots: refreshedData.screenshots || [],
-        demoUrl: refreshedData.demo_url || '',
-        category: refreshedData.category || '',
-        tags: refreshedData.tags || [],
-        features: refreshedData.features || [],
-        createdAt: refreshedData.created_at
-      };
-      
+      // Instead of fetching the updated project from the database,
+      // which can cause the "multiple rows returned" error,
+      // we'll just update the local state with the data we already have
       setProjects(prev => 
-        prev.map(p => p.id === refreshedProject.id ? refreshedProject : p)
+        prev.map(p => p.id === updatedProject.id ? {
+          ...updatedProject,
+          // Keep the original createdAt value
+          createdAt: p.createdAt
+        } : p)
       );
       
       toast({
@@ -323,13 +304,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         refreshProjects
       }}
     >
-      {isLoading ? (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </ProjectContext.Provider>
   );
 };

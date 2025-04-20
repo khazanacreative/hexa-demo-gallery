@@ -5,3 +5,10 @@ project_id = "svqjeqngyindshuxjurp"
 [storage.buckets]
 [storage.buckets.project-images]
 public = true
+
+# Enable realtime for the projects table
+[realtime]
+enabled = true
+
+[realtime.tables.projects]
+enabled = true
