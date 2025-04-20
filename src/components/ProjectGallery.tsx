@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -67,7 +66,7 @@ const ProjectGallery = () => {
         .from('projects')
         .insert({
           title: projectData.title,
-          description: projectData.description,
+          description: projectData.description || '',
           cover_image: projectData.coverImage,
           screenshots: projectData.screenshots,
           demo_url: projectData.demoUrl,
@@ -78,12 +77,12 @@ const ProjectGallery = () => {
         })
         .select()
         .single();
-        
+
       if (error) {
         console.error('Error details:', error);
         throw error;
       }
-      
+
       if (data) {
         const newProject: Project = {
           id: data.id,
@@ -95,9 +94,9 @@ const ProjectGallery = () => {
           category: data.category || '',
           tags: data.tags || [],
           features: data.features || [],
-          createdAt: data.created_at
+          createdAt: data.created_at || new Date().toISOString()
         };
-        
+
         addProject(newProject);
         toast({
           title: "Project berhasil ditambahkan",
@@ -117,7 +116,7 @@ const ProjectGallery = () => {
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
       console.log('Updating project with ID:', updatedProject.id);
-      
+
       const { error } = await supabase
         .from('projects')
         .update({
@@ -131,20 +130,20 @@ const ProjectGallery = () => {
           features: updatedProject.features,
           updated_at: new Date().toISOString()
         })
-        .eq('id', updatedProject.id);
-        
+        .eq('id', updatedProject.id)
+        .eq('user_id', currentUser?.id);
+
       if (error) {
         console.error('Error details:', error);
         throw error;
       }
-      
+
       updateProject(updatedProject);
       toast({
         title: "Project berhasil diperbarui",
         description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
       });
-      
-      // Close the edit form after successful update
+
       setIsEditFormOpen(false);
     } catch (error) {
       console.error('Error updating project:', error);
@@ -159,24 +158,24 @@ const ProjectGallery = () => {
   const handleDeleteProjectConfirm = async (id: string) => {
     try {
       console.log('Deleting project with ID:', id);
-      
+
       const { error } = await supabase
         .from('projects')
         .delete()
-        .eq('id', id);
-        
+        .eq('id', id)
+        .eq('user_id', currentUser?.id);
+
       if (error) {
         console.error('Error details:', error);
         throw error;
       }
-      
+
       deleteProject(id);
       toast({
         title: "Project berhasil dihapus",
         description: "Project telah dihapus dari database.",
       });
-      
-      // Close the delete dialog after successful deletion
+
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Error deleting project:', error);
