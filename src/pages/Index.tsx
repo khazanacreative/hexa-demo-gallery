@@ -23,8 +23,8 @@ const IndexContent = () => {
                 Hexa Demo Gallery
               </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Karya-Karya yang Menghidupkan Ide Anda
-              Lihat hasil kerja kami dalam merancang website, aplikasi dengan desain visual yang fungsional dan estetis.
+              Lihat hasil kerja kami dalam merancang website, aplikasi dengan desain visual yang fungsional dan estetis. 
+              Karya-Karya yang akan menghidupkan ide Anda.
               </p>
             </div>
             
