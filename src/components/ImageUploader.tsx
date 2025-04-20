@@ -25,11 +25,6 @@ const ImageUploader = ({
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      // Check if Supabase client is available
-      if (!supabase) {
-        throw new Error('Supabase client is not available.');
-      }
-      
       setUploading(true);
       
       if (!event.target.files || event.target.files.length === 0) {
@@ -38,79 +33,47 @@ const ImageUploader = ({
       
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 11)}_${Date.now()}.${fileExt}`;
-      const filePath = `${folderPath}/${fileName}`;
-
-      // Check if bucket exists, create if not
-      let { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      const filePath = `${folderPath}/${Math.random().toString(36).substring(2)}.${fileExt}`;
       
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw bucketsError;
-      }
-      
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-      
-      if (!bucketExists) {
-        console.log('Bucket does not exist, creating:', bucketName);
-        const { error: createBucketError } = await supabase.storage.createBucket(bucketName, {
-          public: true
-        });
-        
-        if (createBucketError) {
-          console.error('Error creating bucket:', createBucketError);
-          throw createBucketError;
-        }
-        
-        // Re-fetch buckets to ensure it was created
-        const { data: updatedBuckets } = await supabase.storage.listBuckets();
-        console.log('Updated buckets after creation:', updatedBuckets);
-      }
-
-      // Upload image to Supabase Storage
-      console.log(`Uploading file to ${bucketName}/${filePath}`);
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
         });
-        
+
       if (error) {
-        console.error('Error uploading file:', error);
+        console.error('Error uploading:', error.message);
         throw error;
       }
-      
-      console.log('Upload successful:', data);
-      
-      if (data) {
-        // Get public URL for the uploaded file
-        const { data: urlData } = supabase.storage
-          .from(bucketName)
-          .getPublicUrl(data.path);
-          
-        console.log('Public URL:', urlData.publicUrl);
-        
-        onImageUploaded({
-          path: data.path,
-          url: urlData.publicUrl
-        });
-        
-        toast({
-          title: "Image uploaded",
-          description: "Your image has been uploaded successfully."
-        });
+
+      if (!data) {
+        throw new Error('Upload failed - no data returned');
       }
+
+      const { data: urlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(data.path);
+
+      onImageUploaded({
+        path: data.path,
+        url: urlData.publicUrl
+      });
+
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully",
+      });
+
     } catch (error: any) {
-      console.error('Error uploading image:', error);
+      console.error('Error:', error);
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: error instanceof Error ? error.message : "Failed to upload image",
         variant: "destructive"
       });
     } finally {
       setUploading(false);
-      // Reset the file input
       if (event.target) {
         event.target.value = '';
       }
