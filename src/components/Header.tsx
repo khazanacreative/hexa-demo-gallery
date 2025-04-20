@@ -23,7 +23,7 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <h1 className="text-2xl font-bold">Hexa Demo Gallery</h1>
+            <h1 className="text-2xl font-bold">Hexa Integra Mandiri</h1>
           </Link>
         </div>
                        
