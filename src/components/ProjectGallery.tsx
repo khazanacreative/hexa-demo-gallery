@@ -11,7 +11,7 @@ import { Input } from './ui/input';
 import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from './ui/use-toast';
 
 const ProjectGallery = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -78,7 +78,10 @@ const ProjectGallery = () => {
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
       
       if (data) {
         const newProject: Project = {
@@ -95,12 +98,16 @@ const ProjectGallery = () => {
         };
         
         addProject(newProject);
+        toast({
+          title: "Project berhasil ditambahkan",
+          description: `${newProject.title} telah berhasil disimpan ke database.`,
+        });
       }
     } catch (error) {
       console.error('Error adding project:', error);
       toast({
         title: "Error",
-        description: "Failed to add project to database",
+        description: "Gagal menambahkan project ke database. Silakan coba lagi.",
         variant: "destructive"
       });
     }
@@ -123,14 +130,21 @@ const ProjectGallery = () => {
         })
         .eq('id', updatedProject.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
       
       updateProject(updatedProject);
+      toast({
+        title: "Project berhasil diperbarui",
+        description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
+      });
     } catch (error) {
       console.error('Error updating project:', error);
       toast({
         title: "Error",
-        description: "Failed to update project in database",
+        description: "Gagal memperbarui project di database. Silakan coba lagi.",
         variant: "destructive"
       });
     }
@@ -143,14 +157,21 @@ const ProjectGallery = () => {
         .delete()
         .eq('id', id);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
       
       deleteProject(id);
+      toast({
+        title: "Project berhasil dihapus",
+        description: "Project telah dihapus dari database.",
+      });
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({
         title: "Error",
-        description: "Failed to delete project from database",
+        description: "Gagal menghapus project dari database. Silakan coba lagi.",
         variant: "destructive"
       });
     }

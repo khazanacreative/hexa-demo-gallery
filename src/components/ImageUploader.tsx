@@ -42,27 +42,46 @@ const ImageUploader = ({
       const filePath = `${folderPath}/${fileName}`;
 
       // Check if bucket exists, create if not
-      const { data: buckets } = await supabase.storage.listBuckets();
+      let { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw bucketsError;
+      }
+      
       const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
       
       if (!bucketExists) {
+        console.log('Bucket does not exist, creating:', bucketName);
         const { error: createBucketError } = await supabase.storage.createBucket(bucketName, {
           public: true
         });
         
         if (createBucketError) {
           console.error('Error creating bucket:', createBucketError);
+          throw createBucketError;
         }
+        
+        // Re-fetch buckets to ensure it was created
+        const { data: updatedBuckets } = await supabase.storage.listBuckets();
+        console.log('Updated buckets after creation:', updatedBuckets);
       }
 
       // Upload image to Supabase Storage
+      console.log(`Uploading file to ${bucketName}/${filePath}`);
       const { data, error } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
         
       if (error) {
+        console.error('Error uploading file:', error);
         throw error;
       }
+      
+      console.log('Upload successful:', data);
       
       if (data) {
         // Get public URL for the uploaded file
@@ -70,6 +89,8 @@ const ImageUploader = ({
           .from(bucketName)
           .getPublicUrl(data.path);
           
+        console.log('Public URL:', urlData.publicUrl);
+        
         onImageUploaded({
           path: data.path,
           url: urlData.publicUrl
@@ -80,7 +101,7 @@ const ImageUploader = ({
           description: "Your image has been uploaded successfully."
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
       toast({
         title: "Upload failed",

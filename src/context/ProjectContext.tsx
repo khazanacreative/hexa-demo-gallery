@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
@@ -31,12 +32,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     const fetchProjects = async () => {
       try {
         setIsLoading(true);
+        console.log('Fetching projects from database...');
         const { data, error } = await supabase
           .from('projects')
           .select('*')
           .order('created_at', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
+        
+        console.log('Fetched projects:', data);
         
         if (data && data.length > 0) {
           const fetchedProjects: Project[] = data.map(item => ({
@@ -52,18 +59,31 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             createdAt: item.created_at
           }));
           
+          console.log('Mapped projects:', fetchedProjects);
           setProjects(fetchedProjects);
         } else {
-          setProjects(initialProjects);
+          console.log('No projects found in database, using initial data');
+          // Make sure initialProjects has features array
+          const projectsWithFeatures = initialProjects.map(p => ({
+            ...p,
+            features: p.features || []
+          }));
+          setProjects(projectsWithFeatures);
         }
       } catch (error) {
         console.error('Error fetching projects:', error);
         toast({
           title: "Error",
-          description: "Failed to load projects",
+          description: "Gagal memuat data project",
           variant: "destructive"
         });
-        setProjects(initialProjects);
+        
+        // Make sure initialProjects has features array
+        const projectsWithFeatures = initialProjects.map(p => ({
+          ...p,
+          features: p.features || []
+        }));
+        setProjects(projectsWithFeatures);
       } finally {
         setIsLoading(false);
       }
