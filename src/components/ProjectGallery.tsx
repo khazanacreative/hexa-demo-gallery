@@ -61,6 +61,14 @@ const ProjectGallery = () => {
   };
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+    if (!currentUser) {
+      toast({
+        title: "Error",
+        description: "User not authenticated. Please login.",
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('projects')
@@ -73,7 +81,7 @@ const ProjectGallery = () => {
           category: projectData.category,
           tags: projectData.tags,
           features: projectData.features,
-          user_id: currentUser?.id
+          user_id: currentUser.id
         })
         .select()
         .single();
@@ -114,6 +122,22 @@ const ProjectGallery = () => {
   };
 
   const handleUpdateProject = async (updatedProject: Project) => {
+    if(!currentUser) {
+      toast({
+        title: "Error",
+        description: "User not authenticated. Please login.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if(!updatedProject.id) {
+      toast({
+        title: "Error",
+        description: "Project id is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       console.log('Updating project with ID:', updatedProject.id);
 
@@ -121,7 +145,7 @@ const ProjectGallery = () => {
         .from('projects')
         .update({
           title: updatedProject.title,
-          description: updatedProject.description,
+          description: updatedProject.description || '',
           cover_image: updatedProject.coverImage,
           screenshots: updatedProject.screenshots,
           demo_url: updatedProject.demoUrl,
@@ -131,7 +155,7 @@ const ProjectGallery = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', updatedProject.id)
-        .eq('user_id', currentUser?.id);
+        .eq('user_id', currentUser.id);
 
       if (error) {
         console.error('Error details:', error);
@@ -156,6 +180,14 @@ const ProjectGallery = () => {
   };
 
   const handleDeleteProjectConfirm = async (id: string) => {
+    if(!currentUser) {
+      toast({
+        title: "Error",
+        description: "User not authenticated. Please login.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       console.log('Deleting project with ID:', id);
 
@@ -163,7 +195,7 @@ const ProjectGallery = () => {
         .from('projects')
         .delete()
         .eq('id', id)
-        .eq('user_id', currentUser?.id);
+        .eq('user_id', currentUser.id);
 
       if (error) {
         console.error('Error details:', error);
