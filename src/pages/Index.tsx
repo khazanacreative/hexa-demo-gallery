@@ -23,8 +23,8 @@ const IndexContent = () => {
                 Hexa Demo Gallery
               </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Discover beautiful applications and websites crafted with modern design principles.
-                Toggle between admin and user views to see different perspectives.
+              Karya-Karya yang Menghidupkan Ide Anda
+              Lihat hasil kerja kami dalam merancang website, aplikasi dengan desain visual yang fungsional dan estetis.
               </p>
             </div>
             
