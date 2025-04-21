@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -64,7 +63,8 @@ const ProjectGallery = () => {
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     try {
-      await addProject(projectData);
+      const newProject = await addProject(projectData);
+      console.log("Project added successfully:", newProject);
       setIsAddFormOpen(false);
     } catch (error) {
       console.error('Error adding project:', error);
@@ -78,7 +78,8 @@ const ProjectGallery = () => {
 
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
-      await updateProject(updatedProject);
+      const result = await updateProject(updatedProject);
+      console.log("Project updated successfully:", result);
       setIsEditFormOpen(false);
     } catch (error) {
       console.error('Error updating project:', error);

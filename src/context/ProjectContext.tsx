@@ -8,8 +8,8 @@ interface ProjectContextType {
   searchQuery: string;
   selectedCategory: string | null;
   selectedTags: string[];
-  addProject: (project: Omit<Project, 'id' | 'createdAt'> | Project) => Promise<void>;
-  updateProject: (project: Project) => Promise<void>;
+  addProject: (project: Omit<Project, 'id' | 'createdAt'> | Project) => Promise<Project>;
+  updateProject: (project: Project) => Promise<Project>;
   deleteProject: (id: string) => Promise<void>;
   setSearchQuery: (query: string) => void;
   setSelectedCategory: (category: string | null) => void;
