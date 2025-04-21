@@ -163,6 +163,9 @@ export function useProjectDatabase() {
     try {
       console.log("Updating project:", updatedProject);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('projects')
         .update({
@@ -174,9 +177,11 @@ export function useProjectDatabase() {
           category: updatedProject.category,
           tags: updatedProject.tags,
           features: updatedProject.features,
+          user_id: user.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', updatedProject.id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
