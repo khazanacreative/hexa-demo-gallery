@@ -1,9 +1,7 @@
 
-import { ReactNode, useCallback, useEffect } from 'react';
+import { ReactNode, useCallback } from 'react';
 import { useProjectDatabase } from './useProjectDatabase';
 import { useProjectFilters } from './useProjectFilters';
-import { Project } from '@/types';
-
 import ProjectContext from './ProjectContext';
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
@@ -30,3 +28,5 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     </ProjectContext.Provider>
   );
 };
+
+export default ProjectProvider;

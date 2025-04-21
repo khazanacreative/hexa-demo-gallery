@@ -12,14 +12,19 @@ export function useProjectDatabase() {
   const fetchProjects = useCallback(async () => {
     try {
       setIsLoading(true);
+      console.log("Fetching projects from database...");
+      
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) {
+        console.error("Error fetching projects:", error);
         throw error;
       }
+
+      console.log("Projects fetched:", data);
 
       if (data && data.length > 0) {
         const dbProjects: Project[] = data.map(item => ({
@@ -37,6 +42,7 @@ export function useProjectDatabase() {
         setProjects(dbProjects);
       } else {
         // Init with initial data if database empty
+        console.log("No projects found, initializing with mock data...");
         const projectsWithUuids = initialProjects.map(p => ({
           ...p,
           id: crypto.randomUUID(),
@@ -44,6 +50,7 @@ export function useProjectDatabase() {
         }));
         setProjects(projectsWithUuids);
 
+        console.log("Saving initial projects to database...");
         // Save initial projects to database
         for (const project of projectsWithUuids) {
           await supabase
@@ -62,11 +69,13 @@ export function useProjectDatabase() {
         }
       }
     } catch (error) {
+      console.error("Error in fetchProjects:", error);
       toast({
         title: "Error",
         description: "Gagal memuat data project",
         variant: "destructive"
       });
+      // Fallback to mock data
       const fallbackProjects = initialProjects.map(p => ({
         ...p,
         id: crypto.randomUUID(),
@@ -80,6 +89,8 @@ export function useProjectDatabase() {
 
   const addProject = useCallback(async (projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
     try {
+      console.log("Adding new project:", projectData);
+      
       let newProject: Project;
       if ('id' in projectData && 'createdAt' in projectData) {
         newProject = projectData as Project;
@@ -91,6 +102,9 @@ export function useProjectDatabase() {
           features: (projectData as Omit<Project, 'id' | 'createdAt'>).features || []
         };
       }
+      
+      console.log("Prepared project for insertion:", newProject);
+      
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -107,7 +121,12 @@ export function useProjectDatabase() {
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error adding project to database:", error);
+        throw error;
+      }
+
+      console.log("Project added to database:", data);
 
       const addedProject: Project = {
         id: data.id,
@@ -127,6 +146,8 @@ export function useProjectDatabase() {
         title: "Project added",
         description: `${newProject.title} has been added successfully.`,
       });
+      
+      return addedProject;
     } catch (error) {
       console.error("Error adding project:", error);
       toast({
@@ -140,6 +161,8 @@ export function useProjectDatabase() {
 
   const updateProject = useCallback(async (updatedProject: Project) => {
     try {
+      console.log("Updating project:", updatedProject);
+      
       const { error } = await supabase
         .from('projects')
         .update({
@@ -155,7 +178,12 @@ export function useProjectDatabase() {
         })
         .eq('id', updatedProject.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating project in database:", error);
+        throw error;
+      }
+      
+      console.log("Project updated in database, fetching refreshed data...");
       
       // Re-fetch from database to get the true new row, to prevent out-of-sync issues
       const { data: refreshedData, error: refreshError } = await supabase
@@ -165,6 +193,7 @@ export function useProjectDatabase() {
         .maybeSingle();
 
       if (refreshError) {
+        console.error("Error fetching updated project:", refreshError);
         toast({
           title: "Error",
           description: "Gagal mengambil data project setelah update.",
@@ -172,6 +201,8 @@ export function useProjectDatabase() {
         });
         throw refreshError;
       }
+
+      console.log("Refreshed project data:", refreshedData);
 
       if (refreshedData) {
         const refreshedProject: Project = {
@@ -187,12 +218,14 @@ export function useProjectDatabase() {
           createdAt: refreshedData.created_at
         };
         setProjects(prev => prev.map(p => p.id === refreshedProject.id ? refreshedProject : p));
+        
+        toast({
+          title: "Project updated",
+          description: `${updatedProject.title} has been updated successfully.`,
+        });
+        
+        return refreshedProject;
       }
-
-      toast({
-        title: "Project updated",
-        description: `${updatedProject.title} has been updated successfully.`,
-      });
     } catch (error) {
       console.error("Error updating project:", error);
       toast({
@@ -206,14 +239,22 @@ export function useProjectDatabase() {
 
   const deleteProject = useCallback(async (id: string) => {
     try {
+      console.log("Deleting project:", id);
       const projectToDelete = projects.find(p => p.id === id);
+      
       const { error } = await supabase
         .from('projects')
         .delete()
         .eq('id', id);
-      if (error) throw error;
+        
+      if (error) {
+        console.error("Error deleting project from database:", error);
+        throw error;
+      }
 
+      console.log("Project deleted from database");
       setProjects(prev => prev.filter(p => p.id !== id));
+      
       toast({
         title: "Project deleted",
         description: `${projectToDelete?.title || "Project"} has been deleted.`,
@@ -231,13 +272,16 @@ export function useProjectDatabase() {
   }, [projects]);
 
   const refreshProjects = useCallback(async () => {
+    console.log("Manually refreshing projects...");
     await fetchProjects();
   }, [fetchProjects]);
 
   // Set up realtime subscription to projects table
   useEffect(() => {
+    console.log("Setting up initial data fetch and realtime subscription...");
     fetchProjects();
     
+    console.log("Creating realtime channel subscription...");
     const channel = supabase
       .channel('projects-changes')
       .on('postgres_changes', 
@@ -252,10 +296,16 @@ export function useProjectDatabase() {
           // Handle different database events
           if (payload.eventType === 'INSERT') {
             const newProject = payload.new;
+            console.log('INSERT event detected:', newProject);
+            
             // Only add if not already in the list
             setProjects(current => {
-              if (current.some(p => p.id === newProject.id)) return current;
+              if (current.some(p => p.id === newProject.id)) {
+                console.log('Project already exists in state, skipping');
+                return current;
+              }
               
+              console.log('Adding new project to state');
               const formattedProject: Project = {
                 id: newProject.id,
                 title: newProject.title,
@@ -275,9 +325,12 @@ export function useProjectDatabase() {
           
           else if (payload.eventType === 'UPDATE') {
             const updatedProject = payload.new;
+            console.log('UPDATE event detected:', updatedProject);
+            
             setProjects(current => 
               current.map(p => {
                 if (p.id === updatedProject.id) {
+                  console.log('Updating project in state:', p.id);
                   return {
                     id: updatedProject.id,
                     title: updatedProject.title,
@@ -298,14 +351,23 @@ export function useProjectDatabase() {
           
           else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
-            setProjects(current => current.filter(p => p.id !== deletedId));
+            console.log('DELETE event detected:', deletedId);
+            
+            setProjects(current => {
+              const filtered = current.filter(p => p.id !== deletedId);
+              console.log(`Removed project ${deletedId} from state, ${current.length} → ${filtered.length} projects`);
+              return filtered;
+            });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
     
     // Cleanup subscription on unmount
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [fetchProjects]);

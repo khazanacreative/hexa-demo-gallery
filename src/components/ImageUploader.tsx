@@ -33,8 +33,32 @@ const ImageUploader = ({
       
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${folderPath}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${folderPath}/${fileName}`;
       
+      console.log(`Uploading file to ${bucketName}/${filePath}`);
+      
+      // Check if bucket exists, if not create it
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw bucketsError;
+      }
+      
+      const bucketExists = buckets?.some(b => b.name === bucketName);
+      if (!bucketExists) {
+        console.log(`Bucket ${bucketName} doesn't exist, creating...`);
+        const { error: createBucketError } = await supabase.storage.createBucket(bucketName, {
+          public: true
+        });
+        
+        if (createBucketError) {
+          console.error('Error creating bucket:', createBucketError);
+          throw createBucketError;
+        }
+      }
+
+      // Upload file
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
@@ -51,9 +75,14 @@ const ImageUploader = ({
         throw new Error('Upload failed - no data returned');
       }
 
+      console.log('Upload success, getting public URL:', data);
+
+      // Get public URL
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(data.path);
+
+      console.log('Public URL retrieved:', urlData);
 
       onImageUploaded({
         path: data.path,
