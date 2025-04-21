@@ -246,6 +246,18 @@ export function useProjectDatabase() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // First verify if project exists and belongs to user
+      const { data: existingProject, error: fetchError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError || !existingProject) {
+        throw new Error('Project not found or unauthorized');
+      }
+
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -258,7 +270,8 @@ export function useProjectDatabase() {
       }
 
       console.log("Project deleted from database");
-      setProjects(prev => prev.filter(p => p.id !== id));
+      // Wait for realtime update instead of immediately updating state
+      // This ensures UI stays in sync with database
       
       toast({
         title: "Project deleted",
@@ -358,20 +371,27 @@ export function useProjectDatabase() {
             );
           }
           
-          else if (payload.eventType === 'DELETE' && payload.old.user_id === user.id) {
+          else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
+            const deletedUserId = payload.old.user_id;
             console.log('DELETE event detected:', deletedId);
             
-            setProjects(current => {
-              const filtered = current.filter(p => p.id !== deletedId);
-              console.log(`Removed project ${deletedId} from state, ${current.length} → ${filtered.length} projects`);
-              return filtered;
-            });
+            // Only update state if the deleted project belongs to current user
+            if (deletedUserId === user.id) {
+              setProjects(current => {
+                const filtered = current.filter(p => p.id !== deletedId);
+                console.log(`Removed project ${deletedId} from state, ${current.length} → ${filtered.length} projects`);
+                return filtered;
+              });
+            }
           }
         }
       )
       .subscribe((status) => {
         console.log('Realtime subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to realtime changes');
+        }
       });
     
     // Cleanup subscription on unmount
