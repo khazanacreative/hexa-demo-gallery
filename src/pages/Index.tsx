@@ -3,7 +3,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProjectGallery from '@/components/ProjectGallery';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { ProjectProvider } from '@/context/ProjectContext';
+import { ProjectProvider } from '@/context/ProjectProvider';
 
 const IndexContent = () => {
   const { toggleRole } = useAuth();
