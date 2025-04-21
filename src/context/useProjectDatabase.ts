@@ -183,60 +183,28 @@ export function useProjectDatabase() {
         throw error;
       }
       
-      console.log("Project updated in database, fetching refreshed data...");
+      // Trigger a full refresh to ensure data consistency
+      await fetchProjects();
       
-      // Re-fetch from database to get the true new row, to prevent out-of-sync issues
-      const { data: refreshedData, error: refreshError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', updatedProject.id)
-        .maybeSingle();
-
-      if (refreshError) {
-        console.error("Error fetching updated project:", refreshError);
+      // Get the updated project from the refreshed state
+      const updatedProjectFromState = projects.find(p => p.id === updatedProject.id);
+      
+      if (!updatedProjectFromState) {
+        console.error("Updated project not found in refreshed state");
         toast({
           title: "Error",
-          description: "Gagal mengambil data project setelah update.",
+          description: "Gagal memperbarui data project. Silakan refresh halaman.",
           variant: "destructive"
         });
-        throw refreshError;
+        throw new Error("Project not found after update");
       }
 
-      console.log("Refreshed project data:", refreshedData);
-
-      // If refreshedData is null, use the updatedProject data since we know the update succeeded
-      if (refreshedData) {
-        const refreshedProject: Project = {
-          id: refreshedData.id,
-          title: refreshedData.title,
-          description: refreshedData.description || '',
-          coverImage: refreshedData.cover_image || '',
-          screenshots: refreshedData.screenshots || [],
-          demoUrl: refreshedData.demo_url || '',
-          category: refreshedData.category || '',
-          tags: refreshedData.tags || [],
-          features: refreshedData.features || [],
-          createdAt: refreshedData.created_at
-        };
-        setProjects(prev => prev.map(p => p.id === refreshedProject.id ? refreshedProject : p));
-        
-        toast({
-          title: "Project updated",
-          description: `${updatedProject.title} has been updated successfully.`,
-        });
-        
-        return refreshedProject;
-      } else {
-        // If refreshedData is null (may happen due to RLS or other issues), use our updatedProject
-        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-        
-        toast({
-          title: "Project updated",
-          description: `${updatedProject.title} has been updated successfully.`,
-        });
-        
-        return updatedProject;
-      }
+      toast({
+        title: "Project updated",
+        description: `${updatedProject.title} has been updated successfully.`,
+      });
+      
+      return updatedProjectFromState;
     } catch (error) {
       console.error("Error updating project:", error);
       toast({
@@ -338,26 +306,31 @@ export function useProjectDatabase() {
             const updatedProject = payload.new;
             console.log('UPDATE event detected:', updatedProject);
             
-            setProjects(current => 
-              current.map(p => {
-                if (p.id === updatedProject.id) {
-                  console.log('Updating project in state:', p.id);
-                  return {
-                    id: updatedProject.id,
-                    title: updatedProject.title,
-                    description: updatedProject.description || '',
-                    coverImage: updatedProject.cover_image || '',
-                    screenshots: updatedProject.screenshots || [],
-                    demoUrl: updatedProject.demo_url || '',
-                    category: updatedProject.category || '',
-                    tags: updatedProject.tags || [],
-                    features: updatedProject.features || [],
-                    createdAt: updatedProject.created_at
-                  };
-                }
-                return p;
-              })
-            );
+            // Trigger a full refresh to ensure data consistency
+            fetchProjects().catch(error => {
+              console.error('Error refreshing projects after update:', error);
+              // If refresh fails, update state directly
+              setProjects(current => 
+                current.map(p => {
+                  if (p.id === updatedProject.id) {
+                    console.log('Updating project in state:', p.id);
+                    return {
+                      id: updatedProject.id,
+                      title: updatedProject.title,
+                      description: updatedProject.description || '',
+                      coverImage: updatedProject.cover_image || '',
+                      screenshots: updatedProject.screenshots || [],
+                      demoUrl: updatedProject.demo_url || '',
+                      category: updatedProject.category || '',
+                      tags: updatedProject.tags || [],
+                      features: updatedProject.features || [],
+                      createdAt: updatedProject.created_at
+                    };
+                  }
+                  return p;
+                })
+              );
+            });
           }
           
           else if (payload.eventType === 'DELETE') {
