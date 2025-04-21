@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
@@ -20,6 +20,7 @@ export function useProjectDatabase() {
       if (error) {
         throw error;
       }
+
       if (data && data.length > 0) {
         const dbProjects: Project[] = data.map(item => ({
           id: item.id,
@@ -105,6 +106,7 @@ export function useProjectDatabase() {
         })
         .select()
         .single();
+        
       if (error) throw error;
 
       const addedProject: Project = {
@@ -126,6 +128,7 @@ export function useProjectDatabase() {
         description: `${newProject.title} has been added successfully.`,
       });
     } catch (error) {
+      console.error("Error adding project:", error);
       toast({
         title: "Error",
         description: "Gagal menambahkan project. Silakan coba lagi.",
@@ -191,6 +194,7 @@ export function useProjectDatabase() {
         description: `${updatedProject.title} has been updated successfully.`,
       });
     } catch (error) {
+      console.error("Error updating project:", error);
       toast({
         title: "Error",
         description: "Gagal memperbarui project. Silakan coba lagi.",
@@ -216,6 +220,7 @@ export function useProjectDatabase() {
         variant: "destructive",
       });
     } catch (error) {
+      console.error("Error deleting project:", error);
       toast({
         title: "Error",
         description: "Gagal menghapus project. Silakan coba lagi.",
@@ -227,6 +232,82 @@ export function useProjectDatabase() {
 
   const refreshProjects = useCallback(async () => {
     await fetchProjects();
+  }, [fetchProjects]);
+
+  // Set up realtime subscription to projects table
+  useEffect(() => {
+    fetchProjects();
+    
+    const channel = supabase
+      .channel('projects-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'projects' 
+        }, 
+        payload => {
+          console.log('Realtime change received:', payload);
+          
+          // Handle different database events
+          if (payload.eventType === 'INSERT') {
+            const newProject = payload.new;
+            // Only add if not already in the list
+            setProjects(current => {
+              if (current.some(p => p.id === newProject.id)) return current;
+              
+              const formattedProject: Project = {
+                id: newProject.id,
+                title: newProject.title,
+                description: newProject.description || '',
+                coverImage: newProject.cover_image || '',
+                screenshots: newProject.screenshots || [],
+                demoUrl: newProject.demo_url || '',
+                category: newProject.category || '',
+                tags: newProject.tags || [],
+                features: newProject.features || [],
+                createdAt: newProject.created_at
+              };
+              
+              return [formattedProject, ...current];
+            });
+          }
+          
+          else if (payload.eventType === 'UPDATE') {
+            const updatedProject = payload.new;
+            setProjects(current => 
+              current.map(p => {
+                if (p.id === updatedProject.id) {
+                  return {
+                    id: updatedProject.id,
+                    title: updatedProject.title,
+                    description: updatedProject.description || '',
+                    coverImage: updatedProject.cover_image || '',
+                    screenshots: updatedProject.screenshots || [],
+                    demoUrl: updatedProject.demo_url || '',
+                    category: updatedProject.category || '',
+                    tags: updatedProject.tags || [],
+                    features: updatedProject.features || [],
+                    createdAt: updatedProject.created_at
+                  };
+                }
+                return p;
+              })
+            );
+          }
+          
+          else if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old.id;
+            setProjects(current => current.filter(p => p.id !== deletedId));
+          }
+        }
+      )
+      .subscribe();
+    
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [fetchProjects]);
 
   return {
