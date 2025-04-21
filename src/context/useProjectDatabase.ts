@@ -53,6 +53,9 @@ export function useProjectDatabase() {
         console.log("Saving initial projects to database...");
         // Save initial projects to database
         for (const project of projectsWithUuids) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('User not authenticated');
+
           await supabase
             .from('projects')
             .insert({
@@ -65,6 +68,7 @@ export function useProjectDatabase() {
               category: project.category,
               tags: project.tags,
               features: project.features,
+              user_id: user.id
             });
         }
       }
@@ -105,6 +109,9 @@ export function useProjectDatabase() {
       
       console.log("Prepared project for insertion:", newProject);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -116,7 +123,8 @@ export function useProjectDatabase() {
           demo_url: newProject.demoUrl,
           category: newProject.category,
           tags: newProject.tags,
-          features: newProject.features
+          features: newProject.features,
+          user_id: user.id
         })
         .select()
         .single();
