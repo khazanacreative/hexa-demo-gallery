@@ -38,7 +38,7 @@ const ImageUploader = ({
       
       console.log(`Uploading file to ${bucketName}/${filePath}`);
       
-      // Upload file directly - bucket is already created via SQL
+      // Upload file - bucket is already created via SQL
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
@@ -58,15 +58,15 @@ const ImageUploader = ({
       console.log('Upload success, getting public URL:', data);
 
       // Get public URL
-      const { data: urlData } = supabase.storage
+      const publicUrl = supabase.storage
         .from(bucketName)
-        .getPublicUrl(data.path);
+        .getPublicUrl(data.path).data.publicUrl;
 
-      console.log('Public URL retrieved:', urlData);
+      console.log('Public URL retrieved:', publicUrl);
 
       onImageUploaded({
         path: data.path,
-        url: urlData.publicUrl
+        url: publicUrl
       });
 
       toast({

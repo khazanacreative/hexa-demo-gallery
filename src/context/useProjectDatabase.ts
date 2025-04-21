@@ -204,6 +204,7 @@ export function useProjectDatabase() {
 
       console.log("Refreshed project data:", refreshedData);
 
+      // If refreshedData is null, use the updatedProject data since we know the update succeeded
       if (refreshedData) {
         const refreshedProject: Project = {
           id: refreshedData.id,
@@ -225,6 +226,16 @@ export function useProjectDatabase() {
         });
         
         return refreshedProject;
+      } else {
+        // If refreshedData is null (may happen due to RLS or other issues), use our updatedProject
+        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+        
+        toast({
+          title: "Project updated",
+          description: `${updatedProject.title} has been updated successfully.`,
+        });
+        
+        return updatedProject;
       }
     } catch (error) {
       console.error("Error updating project:", error);
