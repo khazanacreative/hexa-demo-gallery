@@ -114,18 +114,21 @@ export function useProjectDatabase() {
 
       const { data, error } = await supabase
         .from('projects')
-        .insert({
-          id: newProject.id,
-          title: newProject.title,
-          description: newProject.description,
-          cover_image: newProject.coverImage,
-          screenshots: newProject.screenshots,
-          demo_url: newProject.demoUrl,
-          category: newProject.category,
-          tags: newProject.tags,
-          features: newProject.features,
-          user_id: user.id
-        })
+        .insert([
+          {
+            id: newProject.id,
+            title: newProject.title,
+            description: newProject.description,
+            cover_image: newProject.coverImage,
+            screenshots: newProject.screenshots,
+            demo_url: newProject.demoUrl,
+            category: newProject.category,
+            tags: newProject.tags,
+            features: newProject.features,
+            user_id: user.id,
+            created_at: newProject.createdAt
+          }
+        ])
         .select()
         .single();
         
@@ -240,10 +243,14 @@ export function useProjectDatabase() {
       console.log("Deleting project:", id);
       const projectToDelete = projects.find(p => p.id === id);
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { error } = await supabase
         .from('projects')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
         
       if (error) {
         console.error("Error deleting project from database:", error);
@@ -288,11 +295,14 @@ export function useProjectDatabase() {
           schema: 'public', 
           table: 'projects' 
         }, 
-        payload => {
+        async payload => {
           console.log('Realtime change received:', payload);
           
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          
           // Handle different database events
-          if (payload.eventType === 'INSERT') {
+          if (payload.eventType === 'INSERT' && payload.new.user_id === user.id) {
             const newProject = payload.new;
             console.log('INSERT event detected:', newProject);
             
@@ -321,38 +331,34 @@ export function useProjectDatabase() {
             });
           }
           
-          else if (payload.eventType === 'UPDATE') {
+          else if (payload.eventType === 'UPDATE' && payload.new.user_id === user.id) {
             const updatedProject = payload.new;
             console.log('UPDATE event detected:', updatedProject);
             
-            // Trigger a full refresh to ensure data consistency
-            fetchProjects().catch(error => {
-              console.error('Error refreshing projects after update:', error);
-              // If refresh fails, update state directly
-              setProjects(current => 
-                current.map(p => {
-                  if (p.id === updatedProject.id) {
-                    console.log('Updating project in state:', p.id);
-                    return {
-                      id: updatedProject.id,
-                      title: updatedProject.title,
-                      description: updatedProject.description || '',
-                      coverImage: updatedProject.cover_image || '',
-                      screenshots: updatedProject.screenshots || [],
-                      demoUrl: updatedProject.demo_url || '',
-                      category: updatedProject.category || '',
-                      tags: updatedProject.tags || [],
-                      features: updatedProject.features || [],
-                      createdAt: updatedProject.created_at
-                    };
-                  }
-                  return p;
-                })
-              );
-            });
+            // Update state directly without full refresh
+            setProjects(current => 
+              current.map(p => {
+                if (p.id === updatedProject.id) {
+                  console.log('Updating project in state:', p.id);
+                  return {
+                    id: updatedProject.id,
+                    title: updatedProject.title,
+                    description: updatedProject.description || '',
+                    coverImage: updatedProject.cover_image || '',
+                    screenshots: updatedProject.screenshots || [],
+                    demoUrl: updatedProject.demo_url || '',
+                    category: updatedProject.category || '',
+                    tags: updatedProject.tags || [],
+                    features: updatedProject.features || [],
+                    createdAt: updatedProject.created_at
+                  };
+                }
+                return p;
+              })
+            );
           }
           
-          else if (payload.eventType === 'DELETE') {
+          else if (payload.eventType === 'DELETE' && payload.old.user_id === user.id) {
             const deletedId = payload.old.id;
             console.log('DELETE event detected:', deletedId);
             
