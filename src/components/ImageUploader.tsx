@@ -38,27 +38,7 @@ const ImageUploader = ({
       
       console.log(`Uploading file to ${bucketName}/${filePath}`);
       
-      // Check if bucket exists, if not create it
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw bucketsError;
-      }
-      
-      const bucketExists = buckets?.some(b => b.name === bucketName);
-      if (!bucketExists) {
-        console.log(`Bucket ${bucketName} doesn't exist, creating...`);
-        const { error: createBucketError } = await supabase.storage.createBucket(bucketName, {
-          public: true
-        });
-        
-        if (createBucketError) {
-          console.error('Error creating bucket:', createBucketError);
-          throw createBucketError;
-        }
-      }
-
-      // Upload file
+      // Upload file directly - bucket is already created via SQL
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
