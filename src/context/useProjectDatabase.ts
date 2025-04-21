@@ -163,7 +163,7 @@ export function useProjectDatabase() {
     try {
       console.log("Updating project:", updatedProject);
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('projects')
         .update({
           title: updatedProject.title,
@@ -176,35 +176,41 @@ export function useProjectDatabase() {
           features: updatedProject.features,
           updated_at: new Date().toISOString()
         })
-        .eq('id', updatedProject.id);
+        .eq('id', updatedProject.id)
+        .select()
+        .single();
 
       if (error) {
         console.error("Error updating project in database:", error);
         throw error;
       }
-      
-      // Trigger a full refresh to ensure data consistency
-      await fetchProjects();
-      
-      // Get the updated project from the refreshed state
-      const updatedProjectFromState = projects.find(p => p.id === updatedProject.id);
-      
-      if (!updatedProjectFromState) {
-        console.error("Updated project not found in refreshed state");
-        toast({
-          title: "Error",
-          description: "Gagal memperbarui data project. Silakan refresh halaman.",
-          variant: "destructive"
-        });
-        throw new Error("Project not found after update");
+
+      if (!data) {
+        throw new Error("No data returned after update");
       }
+
+      const updatedProjectFromDB: Project = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        coverImage: data.cover_image || '',
+        screenshots: data.screenshots || [],
+        demoUrl: data.demo_url || '',
+        category: data.category || '',
+        tags: data.tags || [],
+        features: data.features || [],
+        createdAt: data.created_at
+      };
+
+      // Update local state
+      setProjects(prev => prev.map(p => p.id === updatedProjectFromDB.id ? updatedProjectFromDB : p));
 
       toast({
         title: "Project updated",
-        description: `${updatedProject.title} has been updated successfully.`,
+        description: `${updatedProject.title} telah berhasil diperbarui.`,
       });
       
-      return updatedProjectFromState;
+      return updatedProjectFromDB;
     } catch (error) {
       console.error("Error updating project:", error);
       toast({
