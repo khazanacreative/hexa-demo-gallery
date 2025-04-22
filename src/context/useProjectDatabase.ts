@@ -14,6 +14,9 @@ export function useProjectDatabase() {
       setIsLoading(true);
       console.log("Fetching projects from database...");
       
+      // First check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -41,35 +44,60 @@ export function useProjectDatabase() {
         }));
         setProjects(dbProjects);
       } else {
-        // Init with initial data if database empty
-        console.log("No projects found, initializing with mock data...");
-        const projectsWithUuids = initialProjects.map(p => ({
-          ...p,
-          id: crypto.randomUUID(),
-          features: p.features || []
-        }));
-        setProjects(projectsWithUuids);
+        // If no data, initialize with mock data only if authenticated
+        if (session) {
+          console.log("No projects found, initializing with mock data...");
+          const projectsWithUuids = initialProjects.map(p => ({
+            ...p,
+            id: crypto.randomUUID(),
+            features: p.features || []
+          }));
+          setProjects(projectsWithUuids);
 
-        console.log("Saving initial projects to database...");
-        // Save initial projects to database
-        for (const project of projectsWithUuids) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error('User not authenticated');
-
-          await supabase
-            .from('projects')
-            .insert({
-              id: project.id,
+          console.log("Saving initial projects to database...");
+          // Save initial projects to database
+          for (const project of projectsWithUuids) {
+            await addProject({
               title: project.title,
               description: project.description,
-              cover_image: project.coverImage,
+              coverImage: project.coverImage,
               screenshots: project.screenshots,
-              demo_url: project.demoUrl,
+              demoUrl: project.demoUrl,
               category: project.category,
               tags: project.tags,
               features: project.features,
-              user_id: user.id
             });
+          }
+          
+          // Fetch again to get the saved projects with server-generated IDs
+          const { data: refreshedData } = await supabase
+            .from('projects')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+          if (refreshedData && refreshedData.length > 0) {
+            const refreshedProjects: Project[] = refreshedData.map(item => ({
+              id: item.id,
+              title: item.title,
+              description: item.description || '',
+              coverImage: item.cover_image || '',
+              screenshots: item.screenshots || [],
+              demoUrl: item.demo_url || '',
+              category: item.category || '',
+              tags: item.tags || [],
+              features: item.features || [],
+              createdAt: item.created_at
+            }));
+            setProjects(refreshedProjects);
+          }
+        } else {
+          console.log("User not authenticated, using mock data without saving to database");
+          const projectsWithUuids = initialProjects.map(p => ({
+            ...p,
+            id: crypto.randomUUID(),
+            features: p.features || []
+          }));
+          setProjects(projectsWithUuids);
         }
       }
     } catch (error) {
@@ -95,6 +123,12 @@ export function useProjectDatabase() {
     try {
       console.log("Adding new project:", projectData);
       
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+      
       let newProject: Project;
       if ('id' in projectData && 'createdAt' in projectData) {
         newProject = projectData as Project;
@@ -109,9 +143,6 @@ export function useProjectDatabase() {
       
       console.log("Prepared project for insertion:", newProject);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
       const { data, error } = await supabase
         .from('projects')
         .insert([
@@ -125,7 +156,7 @@ export function useProjectDatabase() {
             category: newProject.category,
             tags: newProject.tags,
             features: newProject.features,
-            user_id: user.id,
+            user_id: session.user.id,
             created_at: newProject.createdAt
           }
         ])
@@ -174,8 +205,11 @@ export function useProjectDatabase() {
     try {
       console.log("Updating project:", updatedProject);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
 
       const { data, error } = await supabase
         .from('projects')
@@ -188,11 +222,9 @@ export function useProjectDatabase() {
           category: updatedProject.category,
           tags: updatedProject.tags,
           features: updatedProject.features,
-          user_id: user.id,
           updated_at: new Date().toISOString()
         })
         .eq('id', updatedProject.id)
-        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -205,6 +237,8 @@ export function useProjectDatabase() {
         throw new Error("No data returned after update");
       }
 
+      console.log("Project updated in database:", data);
+      
       const updatedProjectFromDB: Project = {
         id: data.id,
         title: data.title,
@@ -243,26 +277,16 @@ export function useProjectDatabase() {
       console.log("Deleting project:", id);
       const projectToDelete = projects.find(p => p.id === id);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // First verify if project exists and belongs to user
-      const { data: existingProject, error: fetchError } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (fetchError || !existingProject) {
-        throw new Error('Project not found or unauthorized');
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
       }
 
       const { error } = await supabase
         .from('projects')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
         
       if (error) {
         console.error("Error deleting project from database:", error);
@@ -270,8 +294,9 @@ export function useProjectDatabase() {
       }
 
       console.log("Project deleted from database");
-      // Wait for realtime update instead of immediately updating state
-      // This ensures UI stays in sync with database
+      
+      // Update local state immediately rather than waiting for realtime
+      setProjects(prev => prev.filter(p => p.id !== id));
       
       toast({
         title: "Project deleted",
@@ -294,7 +319,7 @@ export function useProjectDatabase() {
     await fetchProjects();
   }, [fetchProjects]);
 
-  // Set up realtime subscription to projects table
+  // Set up initial data fetch and realtime subscription
   useEffect(() => {
     console.log("Setting up initial data fetch and realtime subscription...");
     fetchProjects();
@@ -311,11 +336,8 @@ export function useProjectDatabase() {
         async payload => {
           console.log('Realtime change received:', payload);
           
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          
           // Handle different database events
-          if (payload.eventType === 'INSERT' && payload.new.user_id === user.id) {
+          if (payload.eventType === 'INSERT') {
             const newProject = payload.new;
             console.log('INSERT event detected:', newProject);
             
@@ -344,7 +366,7 @@ export function useProjectDatabase() {
             });
           }
           
-          else if (payload.eventType === 'UPDATE' && payload.new.user_id === user.id) {
+          else if (payload.eventType === 'UPDATE') {
             const updatedProject = payload.new;
             console.log('UPDATE event detected:', updatedProject);
             
@@ -373,17 +395,13 @@ export function useProjectDatabase() {
           
           else if (payload.eventType === 'DELETE') {
             const deletedId = payload.old.id;
-            const deletedUserId = payload.old.user_id;
             console.log('DELETE event detected:', deletedId);
             
-            // Only update state if the deleted project belongs to current user
-            if (deletedUserId === user.id) {
-              setProjects(current => {
-                const filtered = current.filter(p => p.id !== deletedId);
-                console.log(`Removed project ${deletedId} from state, ${current.length} → ${filtered.length} projects`);
-                return filtered;
-              });
-            }
+            setProjects(current => {
+              const filtered = current.filter(p => p.id !== deletedId);
+              console.log(`Removed project ${deletedId} from state, ${current.length} → ${filtered.length} projects`);
+              return filtered;
+            });
           }
         }
       )

@@ -1,148 +1,188 @@
 
-import { useState } from 'react';
-import { FileUploadResult } from '@/types';
-import { HexaButton } from './ui/hexa-button';
-import { Image, Loader2, X } from 'lucide-react';
-import { toast } from './ui/use-toast';
+import React, { useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import { HexaButton } from './ui/hexa-button';
+import { Upload, Loader2, RefreshCw } from 'lucide-react';
+import { toast } from './ui/use-toast';
+import { FileUploadResult } from '@/types';
 
 interface ImageUploaderProps {
   currentImageUrl: string;
   onImageUploaded: (result: FileUploadResult) => void;
-  bucketName?: string;
+  bucketName: string;
   folderPath?: string;
   className?: string;
 }
 
-const ImageUploader = ({ 
-  currentImageUrl, 
-  onImageUploaded, 
-  bucketName = 'project-images', 
-  folderPath = 'covers',
-  className = '', 
-}: ImageUploaderProps) => {
+const ImageUploader: React.FC<ImageUploaderProps> = ({
+  currentImageUrl,
+  onImageUploaded,
+  bucketName,
+  folderPath = '',
+  className,
+}) => {
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
   
-  const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Check if the current image is a placeholder
+  const isPlaceholder = currentImageUrl.includes('placeholder') || !currentImageUrl;
+
+  const uploadImage = useCallback(async (file: File) => {
     try {
       setUploading(true);
       
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      if (!file) {
+        throw new Error('You must select an image to upload');
       }
       
-      const file = event.target.files[0];
+      // Create a unique file name to avoid collisions
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${folderPath}/${fileName}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = folderPath ? `${folderPath}/${fileName}` : fileName;
       
-      console.log(`Uploading file to ${bucketName}/${filePath}`);
-      
-      // Upload file - bucket is already created via SQL
-      const { data, error } = await supabase.storage
+      // Check if bucket exists
+      const { data: bucketData, error: bucketError } = await supabase
+        .storage
+        .getBucket(bucketName);
+        
+      if (bucketError && bucketError.message.includes('The resource was not found')) {
+        console.error('Bucket not found:', bucketName);
+        throw new Error(`Storage bucket "${bucketName}" not found. Please create it first.`);
+      }
+
+      // Upload the file to Supabase Storage
+      const { data, error } = await supabase
+        .storage
         .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: true,
+          upsert: true
         });
 
       if (error) {
-        console.error('Error uploading:', error.message);
+        console.error('Error uploading file:', error);
         throw error;
       }
 
       if (!data) {
-        throw new Error('Upload failed - no data returned');
+        throw new Error('Upload failed');
       }
-
-      console.log('Upload success, getting public URL:', data);
-
-      // Get public URL
-      const publicUrl = supabase.storage
+      
+      console.log('File uploaded successfully:', data);
+      
+      // Get the public URL
+      const { data: publicUrlData } = supabase
+        .storage
         .from(bucketName)
-        .getPublicUrl(data.path).data.publicUrl;
-
-      console.log('Public URL retrieved:', publicUrl);
-
+        .getPublicUrl(data.path);
+        
+      const url = publicUrlData.publicUrl;
+      console.log('Public URL:', url);
+      
+      // Update the preview
+      setPreviewUrl(url);
+      
+      // Call the callback with the result
       onImageUploaded({
         path: data.path,
-        url: publicUrl
+        url
       });
-
+      
       toast({
         title: "Success",
         description: "Image uploaded successfully",
       });
-
+      
+      return url;
     } catch (error: any) {
-      console.error('Error:', error);
+      console.error('Error in uploadImage:', error);
       toast({
-        title: "Upload failed",
-        description: error instanceof Error ? error.message : "Failed to upload image",
+        title: "Error",
+        description: `Upload failed: ${error.message}`,
         variant: "destructive"
       });
     } finally {
       setUploading(false);
-      if (event.target) {
-        event.target.value = '';
-      }
     }
-  };
-  
+  }, [bucketName, folderPath, onImageUploaded]);
+
+  const handleFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        // Create a preview
+        const objectUrl = URL.createObjectURL(file);
+        setPreviewUrl(objectUrl);
+        
+        // Upload the file
+        await uploadImage(file);
+        
+        // Clean up the object URL
+        URL.revokeObjectURL(objectUrl);
+      }
+    },
+    [uploadImage]
+  );
+
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-100 border">
-        {currentImageUrl ? (
-          <img 
-            src={currentImageUrl} 
-            alt="Preview" 
+    <div className={cn("flex flex-col items-center gap-2", className)}>
+      <div className="relative w-full aspect-video bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+        {previewUrl && (
+          <img
+            src={previewUrl}
+            alt="Preview"
             className="w-full h-full object-cover"
+            style={{ maxHeight: '200px' }}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-            <Image size={16} />
+        )}
+        
+        {!previewUrl && (
+          <div className="flex items-center justify-center w-full h-full text-gray-400">
+            No image selected
+          </div>
+        )}
+        
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            {uploading ? (
+              <Loader2 className="h-8 w-8 text-white animate-spin" />
+            ) : (
+              <RefreshCw className="h-8 w-8 text-white" />
+            )}
           </div>
         )}
       </div>
       
-      <input
-        type="text"
-        className="flex-1 px-3 py-2 border border-gray-200 rounded"
-        placeholder="Image URL or upload"
-        value={currentImageUrl}
-        onChange={(e) => onImageUploaded({ path: '', url: e.target.value })}
-      />
-      
-      <div className="relative">
-        <HexaButton 
-          type="button" 
-          variant="outline" 
-          size="icon" 
-          className="flex-shrink-0"
-          disabled={uploading}
-        >
-          {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
-        </HexaButton>
-        <input 
-          type="file"
-          accept="image/*"
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          onChange={uploadImage}
-          disabled={uploading}
-        />
+      <div className="flex gap-2 w-full">
+        <label className="w-full">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            disabled={uploading}
+            className="hidden"
+          />
+          <HexaButton
+            type="button"
+            variant={isPlaceholder ? "hexa" : "outline"}
+            className="w-full"
+            disabled={uploading}
+            asChild
+          >
+            <span>
+              <Upload size={16} className="mr-2" />
+              {isPlaceholder ? "Upload Image" : "Change Image"}
+            </span>
+          </HexaButton>
+        </label>
       </div>
-      
-      {currentImageUrl && (
-        <HexaButton
-          type="button"
-          variant="outline"
-          size="icon"
-          className="flex-shrink-0"
-          onClick={() => onImageUploaded({ path: '', url: '' })}
-        >
-          <X size={16} />
-        </HexaButton>
-      )}
     </div>
   );
 };

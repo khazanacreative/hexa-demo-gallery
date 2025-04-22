@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -11,6 +12,7 @@ import { Input } from './ui/input';
 import { Plus, Filter, LayoutGrid, Search, X, Tag, RefreshCw } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import { toast } from './ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const ProjectGallery = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -20,6 +22,7 @@ const ProjectGallery = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const { currentUser } = useAuth();
   const { 
@@ -33,22 +36,54 @@ const ProjectGallery = () => {
     setSelectedCategory,
     selectedTags,
     toggleTagSelection,
-    refreshProjects
+    refreshProjects,
+    isLoading
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
+
+  // Check authentication status
+  useState(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+    };
+    checkAuth();
+  });
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
     setIsModalOpen(true);
   };
 
-  const handleEditProject = (project: Project) => {
+  const handleEditProject = async (project: Project) => {
+    // Check authentication before editing
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to edit projects",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setSelectedProject(project);
     setIsEditFormOpen(true);
   };
 
-  const handleDeleteProject = (project: Project) => {
+  const handleDeleteProject = async (project: Project) => {
+    // Check authentication before deleting
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to delete projects",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setProjectToDelete(project);
     setIsDeleteDialogOpen(true);
   };
@@ -57,7 +92,18 @@ const ProjectGallery = () => {
     setIsModalOpen(false);
   };
 
-  const handleAddNewProject = () => {
+  const handleAddNewProject = async () => {
+    // Check authentication before adding
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to add projects",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsAddFormOpen(true);
   };
 
@@ -139,9 +185,9 @@ const ProjectGallery = () => {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-gradient-to-r from-hexa-red/10 to-hexa-dark-red/10 px-3 py-1.5 rounded-full text-sm">
             <span className="w-2 h-2 rounded-full animate-hexa-pulse" 
-                  style={{backgroundColor: isAdmin ? '#ea384c' : '#555555'}}></span>
+                  style={{backgroundColor: isAuthenticated ? '#ea384c' : '#555555'}}></span>
             <span className="font-medium">
-              {isAdmin ? 'Admin' : 'User'} View
+              {isAuthenticated ? (isAdmin ? 'Admin' : 'User') : 'Guest'} View
             </span>
           </div>
           
@@ -156,7 +202,7 @@ const ProjectGallery = () => {
             <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
           </HexaButton>
           
-          {isAdmin && (
+          {isAdmin && isAuthenticated && (
             <HexaButton variant="hexa" size="sm" className="gap-1" onClick={handleAddNewProject}>
               <Plus size={14} />
               <span>New Project</span>
@@ -232,19 +278,26 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
-          <ProjectCard 
-            key={project.id} 
-            project={project} 
-            onClick={handleProjectClick}
-            onEdit={isAdmin ? handleEditProject : undefined}
-            onDelete={isAdmin ? handleDeleteProject : undefined}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="text-center py-12">
+          <RefreshCw size={40} className="mx-auto animate-spin text-gray-400" />
+          <p className="mt-4 text-gray-500">Loading projects...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <ProjectCard 
+              key={project.id} 
+              project={project} 
+              onClick={handleProjectClick}
+              onEdit={isAuthenticated ? handleEditProject : undefined}
+              onDelete={isAuthenticated ? handleDeleteProject : undefined}
+            />
+          ))}
+        </div>
+      )}
       
-      {filteredProjects.length === 0 && (
+      {!isLoading && filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No projects found matching the selected filters.</p>
         </div>
@@ -254,7 +307,7 @@ const ProjectGallery = () => {
         project={selectedProject} 
         isOpen={isModalOpen} 
         onClose={closeModal}
-        onEdit={isAdmin && selectedProject ? () => handleEditProject(selectedProject) : undefined}
+        onEdit={isAuthenticated && selectedProject ? () => handleEditProject(selectedProject) : undefined}
       />
       
       {isAddFormOpen && (

@@ -5,10 +5,17 @@ project_id = "svqjeqngyindshuxjurp"
 [storage.buckets]
 [storage.buckets.project-images]
 public = true
+file_size_limit = "10mb"
 
 # Enable realtime for the projects table
 [realtime]
 enabled = true
 
-[realtime.tables.projects]
+[[realtime.tables]]
+name = "projects"
+schema = "public"
+enabled = true
+
+[[realtime.tables.scopes]]
+name = "all"
 enabled = true
