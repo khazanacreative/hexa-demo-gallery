@@ -34,17 +34,40 @@ const UserManagement = () => {
     e.preventDefault();
     setIsAddingUser(true);
     
+    // Validasi email unik
+    const emailExists = users.some(user => user.email === newUserEmail);
+    if (emailExists) {
+      toast({
+        title: "Error",
+        description: "Email already exists",
+        variant: "destructive",
+      });
+      setIsAddingUser(false);
+      return;
+    }
+
+    // Validasi password
+    if (newUserPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      setIsAddingUser(false);
+      return;
+    }
+    
     try {
       await addUser({
-        email: newUserEmail,
+        email: newUserEmail.trim(),
         password: newUserPassword,
-        name: newUserName,
+        name: newUserName.trim(),
         role: 'user' // New users are always regular users
       });
       
       toast({
-        title: "User added",
-        description: `${newUserName} has been added successfully`,
+        title: "Success",
+        description: `User ${newUserName} has been added successfully`,
       });
       
       // Reset form
@@ -54,7 +77,7 @@ const UserManagement = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add user",
+        description: error instanceof Error ? error.message : "Failed to add user",
         variant: "destructive",
       });
       console.error(error);
@@ -64,17 +87,38 @@ const UserManagement = () => {
   };
 
   const handleRemoveUser = async (userId: string, userName: string) => {
+    // Prevent removing admin users
+    const userToRemove = users.find(user => user.id === userId);
+    if (userToRemove?.role === 'admin') {
+      toast({
+        title: "Error",
+        description: "Admin users cannot be removed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent removing current user
+    if (userId === currentUser?.id) {
+      toast({
+        title: "Error",
+        description: "You cannot remove your own account",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (window.confirm(`Are you sure you want to remove ${userName}?`)) {
       try {
         await removeUser(userId);
         toast({
-          title: "User removed",
-          description: `${userName} has been removed successfully`,
+          title: "Success",
+          description: `User ${userName} has been removed successfully`,
         });
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to remove user",
+          description: error instanceof Error ? error.message : "Failed to remove user",
           variant: "destructive",
         });
         console.error(error);

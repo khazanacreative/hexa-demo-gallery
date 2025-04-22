@@ -6,11 +6,9 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ProjectProvider } from '@/context/ProjectProvider';
 
 const IndexContent = () => {
-  const { toggleRole } = useAuth();
-  
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
-      <Header onRoleToggle={toggleRole} />
+      <Header />
       
       <main className="flex-grow">
         <section className="py-10 px-4">
