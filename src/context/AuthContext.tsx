@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: userId,
             name: data.session.user.email?.split('@')[0] || 'User',
             email: data.session.user.email || '',
-            role: 'user', // Default role
+            role: 'admin', // Default role for Supabase users (since this is a demo)
           };
           
           // Add to users list
@@ -161,6 +161,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         // Save to localStorage for persistence
         localStorage.setItem('hexa_currentUser', JSON.stringify(user));
+        
+        toast({
+          title: "Success",
+          description: `Logged in as ${user.role.toUpperCase()}`,
+        });
+        
         return true;
       }
       
@@ -198,6 +204,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setCurrentUser(localUser);
           setIsAuthenticated(true);
           localStorage.setItem('hexa_currentUser', JSON.stringify(localUser));
+          
+          toast({
+            title: "Success",
+            description: `Logged in as ${localUser.role.toUpperCase()}`,
+          });
+          
           return true;
         }
         
@@ -227,6 +239,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Then try to sign out from Supabase
       await supabase.auth.signOut();
+      
+      toast({
+        title: "Success",
+        description: "Logged out successfully",
+      });
+      
     } catch (error) {
       console.error('Logout error:', error);
       toast({

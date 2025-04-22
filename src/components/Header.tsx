@@ -3,22 +3,13 @@ import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
 import { LogOut, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from './ui/use-toast';
 
-interface HeaderProps {
-  onRoleToggle: () => void;
-}
-
-const Header = ({ onRoleToggle }: HeaderProps) => {
+const Header = () => {
   const { currentUser, logout, isAuthenticated } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin] = useState(isAuthenticated && currentUser?.role === 'admin');
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Check admin status whenever authentication or user changes
-    setIsAdmin(isAuthenticated && currentUser?.role === 'admin');
-  }, [currentUser, isAuthenticated]);
 
   const handleLogout = async () => {
     try {
