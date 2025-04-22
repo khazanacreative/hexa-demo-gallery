@@ -67,19 +67,20 @@ const ProjectForm = ({
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (defaultValues && currentUser?.role !== 'admin') {
+    if (!currentUser || currentUser.role !== 'admin') {
       toast({
         title: "Akses Ditolak",
-        description: "Hanya admin yang dapat mengedit data project.",
+        description: "Hanya admin yang dapat mengakses form project.",
         variant: "destructive"
       });
       onClose();
+      return;
     }
-  }, [defaultValues, currentUser, onClose]);
+  }, [currentUser, onClose]);
 
   const handleSubmit = (data: ProjectFormValues) => {
     try {
-      if (defaultValues && currentUser?.role !== 'admin') {
+      if (!currentUser || currentUser.role !== 'admin') {
         toast({
           title: "Akses Ditolak",
           description: "Hanya admin yang dapat mengedit data project.",
