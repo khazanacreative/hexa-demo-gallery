@@ -3,6 +3,7 @@ import { Project } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
+import { useEffect, useState } from 'react';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -15,8 +16,13 @@ const ProjectAdminControls = ({
   onEdit, 
   onDelete
 }: ProjectAdminControlsProps) => {
-  const { currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const { currentUser, isAuthenticated } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    // Check admin status whenever authentication or user changes
+    setIsAdmin(isAuthenticated && currentUser?.role === 'admin');
+  }, [currentUser, isAuthenticated]);
 
   if (!isAdmin) return null;
 
@@ -28,7 +34,7 @@ const ProjectAdminControls = ({
         className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
         onClick={(e) => {
           e.stopPropagation();
-          onEdit?.(project);
+          if (onEdit) onEdit(project);
         }}
       >
         <Edit size={14} />
@@ -40,7 +46,7 @@ const ProjectAdminControls = ({
         className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
         onClick={(e) => {
           e.stopPropagation();
-          onDelete?.(project);
+          if (onDelete) onDelete(project);
         }}
       >
         <Trash2 size={14} />

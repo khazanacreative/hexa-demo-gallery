@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -12,19 +11,23 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, checkAuthStatus } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Check if user is already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      // Redirect to home or last visited page
-      const from = location.state?.from || '/';
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, navigate, location]);
+    const checkAuth = async () => {
+      const isAuth = await checkAuthStatus();
+      if (isAuth) {
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
+      }
+    };
+
+    checkAuth();
+  }, [isAuthenticated, navigate, location, checkAuthStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +44,8 @@ const Login = () => {
           description: "Welcome back!",
         });
         // Redirect will happen automatically via the useEffect
+        const from = location.state?.from || '/';
+        navigate(from, { replace: true });
       } else {
         setError('Invalid email or password');
         toast({
@@ -49,12 +54,12 @@ const Login = () => {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      setError('An error occurred during login');
+      setError(error.message || 'An error occurred during login');
       toast({
         title: "Login error",
-        description: "An error occurred during login",
+        description: error.message || "An error occurred during login",
         variant: "destructive",
       });
     } finally {

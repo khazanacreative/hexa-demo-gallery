@@ -2,6 +2,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { Project } from '@/types';
+import { useState } from 'react';
 
 interface DeleteConfirmationDialogProps {
   project: Project | null;
@@ -16,7 +17,21 @@ const DeleteConfirmationDialog = ({
   onClose,
   onConfirm,
 }: DeleteConfirmationDialogProps) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   if (!project) return null;
+  
+  const handleConfirm = async () => {
+    try {
+      setIsDeleting(true);
+      await onConfirm();
+    } catch (error) {
+      console.error("Error during delete confirmation:", error);
+    } finally {
+      setIsDeleting(false);
+      onClose();
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -29,17 +44,19 @@ const DeleteConfirmationDialog = ({
         </DialogHeader>
 
         <div className="flex justify-end gap-2 pt-4">
-          <HexaButton variant="outline" onClick={onClose}>
+          <HexaButton 
+            variant="outline" 
+            onClick={onClose}
+            disabled={isDeleting}
+          >
             Cancel
           </HexaButton>
           <HexaButton 
             variant="destructive" 
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
+            onClick={handleConfirm}
+            disabled={isDeleting}
           >
-            Delete
+            {isDeleting ? 'Deleting...' : 'Delete'}
           </HexaButton>
         </div>
       </DialogContent>

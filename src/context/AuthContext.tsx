@@ -63,39 +63,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check authentication status on mount
   const checkAuthStatus = useCallback(async (): Promise<boolean> => {
     try {
-      // Check if user is authenticated with Supabase
+      // First check local storage - fastest way
+      const localUser = localStorage.getItem('hexa_currentUser');
+      if (localUser) {
+        const parsedUser = JSON.parse(localUser);
+        setCurrentUser(parsedUser);
+        setIsAuthenticated(true);
+        return true;
+      }
+      
+      // Then check Supabase session
       const { data } = await supabase.auth.getSession();
       
       if (data.session) {
         // Find the corresponding user in our local database
         const userId = data.session.user.id;
-        const user = users.find(u => u.id === userId) || {
-          id: userId,
-          name: data.session.user.email || 'User',
-          email: data.session.user.email || '',
-          role: 'user',
-        };
         
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-        return true;
-      } else {
-        // Try to check if we have a user in localStorage
-        const localUser = localStorage.getItem('hexa_currentUser');
-        if (localUser) {
-          const parsedUser = JSON.parse(localUser);
-          setCurrentUser(parsedUser);
-          setIsAuthenticated(true);
-          return true;
+        // Try to find in existing users first
+        let user = users.find(u => u.id === userId);
+        
+        // If not found, create a default user object
+        if (!user) {
+          user = {
+            id: userId,
+            name: data.session.user.email?.split('@')[0] || 'User',
+            email: data.session.user.email || '',
+            role: 'user', // Default role
+          };
+          
+          // Add to users list
+          setUsers(prevUsers => [...prevUsers, user as AuthUser]);
         }
         
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-        return false;
+        // Update current user and authentication status
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        
+        // Save to localStorage for faster access next time
+        localStorage.setItem('hexa_currentUser', JSON.stringify(user));
+        
+        return true;
       }
+      
+      // If no session found
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('hexa_currentUser');
+      return false;
+      
     } catch (error) {
       console.error('Error checking auth status:', error);
+      // Clear everything to be safe
+      setCurrentUser(null);
       setIsAuthenticated(false);
+      localStorage.removeItem('hexa_currentUser');
       return false;
     }
   }, [users]);
@@ -136,8 +157,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (user) {
         console.log("Found local user:", user);
-        // Create a copy of the user without the password for security
-        const { password: _, ...userWithoutPassword } = user;
         setCurrentUser(user);
         setIsAuthenticated(true);
         // Save to localStorage for persistence
@@ -168,9 +187,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!localUser) {
             localUser = {
               id: userId,
-              name: data.user.email || 'User',
+              name: data.user.email?.split('@')[0] || 'User',
               email: data.user.email || '',
-              role: 'user', // Default role
+              role: 'admin', // Default to admin for demo purposes
             };
             
             setUsers(prevUsers => [...prevUsers, localUser as AuthUser]);
@@ -181,13 +200,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('hexa_currentUser', JSON.stringify(localUser));
           return true;
         }
+        
+        return false;
       } catch (supabaseError) {
         console.error("Caught Supabase error:", supabaseError);
         // Continue to return false as the login failed
+        return false;
       }
-      
-      console.log("Login failed - no matching user found");
-      return false;
     } catch (error) {
       console.error('Login error:', error);
       toast({
@@ -201,20 +220,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void> => {
     try {
-      // Try to sign out from Supabase regardless of local state
-      await supabase.auth.signOut();
-      
-      // Clear local state
+      // First clear local state
       setCurrentUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('hexa_currentUser');
+      
+      // Then try to sign out from Supabase
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
       toast({
         title: "Logout Error",
-        description: "Could not log out. Please try again.",
+        description: "Could not log out completely. Please try again.",
         variant: "destructive"
       });
+      
+      // Still clear local state even if Supabase logout fails
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('hexa_currentUser');
     }
   };
 
@@ -235,6 +259,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user.id === currentUser.id ? updatedUser : user
       )
     );
+    
+    toast({
+      title: "Role Updated",
+      description: `Your role has been changed to ${newRole.toUpperCase()}`
+    });
   };
 
   const addUser = async (userData: UserCreationData): Promise<void> => {
@@ -249,7 +278,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       const newUser: AuthUser = {
-        id: data.user?.id || Date.now().toString(), // Use Supabase ID if available
+        id: data.user?.id || crypto.randomUUID(),
         name: userData.name,
         email: userData.email,
         password: userData.password, // In a real app, this would be hashed
@@ -257,20 +286,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
       
       setUsers(prevUsers => [...prevUsers, newUser]);
-    } catch (error) {
+      
+      toast({
+        title: "User Added",
+        description: `${userData.name} has been added successfully.`
+      });
+    } catch (error: any) {
       console.error('Error adding user:', error);
+      
       // Fallback to local user creation
       const newUser: AuthUser = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         ...userData
       };
       
       setUsers(prevUsers => [...prevUsers, newUser]);
+      
+      toast({
+        title: "User Added Locally",
+        description: `${userData.name} has been added to local storage.`
+      });
     }
   };
 
   const removeUser = async (userId: string): Promise<void> => {
-    setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+    try {
+      // Don't allow removing the currently logged in user
+      if (currentUser?.id === userId) {
+        throw new Error("Cannot remove currently logged in user");
+      }
+      
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      
+      toast({
+        title: "User Removed",
+        description: "User has been removed successfully."
+      });
+    } catch (error: any) {
+      console.error('Error removing user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Could not remove user.",
+        variant: "destructive"
+      });
+      throw error;
+    }
   };
 
   return (

@@ -3,23 +3,39 @@ import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
 import { LogOut, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { toast } from './ui/use-toast';
 
 interface HeaderProps {
   onRoleToggle: () => void;
 }
 
 const Header = ({ onRoleToggle }: HeaderProps) => {
-  const { currentUser, logout } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const { currentUser, logout, isAuthenticated } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check admin status whenever authentication or user changes
+    setIsAdmin(isAuthenticated && currentUser?.role === 'admin');
+  }, [currentUser, isAuthenticated]);
 
   const handleLogout = async () => {
     try {
       await logout();
       // Force navigation to login page
       navigate('/login', { replace: true });
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account."
+      });
     } catch (error) {
       console.error('Logout failed:', error);
+      toast({
+        title: "Logout failed",
+        description: "There was a problem logging out.",
+        variant: "destructive"
+      });
     }
   };
 

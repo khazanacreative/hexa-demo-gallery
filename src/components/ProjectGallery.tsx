@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -22,9 +21,9 @@ const ProjectGallery = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   
-  const { currentUser, isAuthenticated: authStatus } = useAuth();
+  const { currentUser, isAuthenticated, checkAuthStatus } = useAuth();
   const { 
     filteredProjects, 
     addProject, 
@@ -40,21 +39,22 @@ const ProjectGallery = () => {
     isLoading
   } = useProjects();
   
-  const isAdmin = currentUser?.role === 'admin';
-
-  // Update isAuthenticated when auth status changes
   useEffect(() => {
-    setIsAuthenticated(authStatus);
-  }, [authStatus]);
-
-  // Check authentication status on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
+    const checkAdminStatus = async () => {
+      const isAuth = await checkAuthStatus();
+      setIsAdmin(isAuth && currentUser?.role === 'admin');
     };
-    checkAuth();
-  }, []);
+    
+    checkAdminStatus();
+  }, [currentUser, isAuthenticated, checkAuthStatus]);
+
+  useEffect(() => {
+    const initialCheck = async () => {
+      await checkAuthStatus();
+    };
+    
+    initialCheck();
+  }, [checkAuthStatus]);
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
@@ -62,68 +62,107 @@ const ProjectGallery = () => {
   };
 
   const handleEditProject = useCallback(async (project: Project) => {
-    // Check authentication before editing
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
+    try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can edit projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setSelectedProject(project);
+      setIsEditFormOpen(true);
+    } catch (error) {
+      console.error('Error in edit project:', error);
       toast({
-        title: "Authentication Required",
-        description: "You must be logged in to edit projects",
+        title: "Error",
+        description: "Failed to open edit form. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    setSelectedProject(project);
-    setIsEditFormOpen(true);
-  }, []);
+  }, [checkAuthStatus, currentUser?.role]);
 
   const handleDeleteProject = useCallback(async (project: Project) => {
-    // Check authentication before deleting
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
+    try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can delete projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setProjectToDelete(project);
+      setIsDeleteDialogOpen(true);
+    } catch (error) {
+      console.error('Error in delete project:', error);
       toast({
-        title: "Authentication Required",
-        description: "You must be logged in to delete projects",
+        title: "Error",
+        description: "Failed to open delete dialog. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    setProjectToDelete(project);
-    setIsDeleteDialogOpen(true);
-  }, []);
+  }, [checkAuthStatus, currentUser?.role]);
 
   const closeModal = () => {
     setIsModalOpen(false);
   };
 
   const handleAddNewProject = async () => {
-    // Check authentication before adding
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
+    try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can add projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setIsAddFormOpen(true);
+    } catch (error) {
+      console.error('Error in add project:', error);
       toast({
-        title: "Authentication Required",
-        description: "You must be logged in to add projects",
+        title: "Error",
+        description: "Failed to open add form. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    setIsAddFormOpen(true);
   };
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can add projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const newProject = await addProject(projectData);
       console.log("Project added successfully:", newProject);
       setIsAddFormOpen(false);
       
-      await refreshProjects(); // Refresh projects after adding
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: "Project added successfully",
+      });
+      
+      await refreshProjects();
+    } catch (error: any) {
       console.error('Error adding project:', error);
       toast({
         title: "Error",
-        description: "Gagal menambahkan project ke database. Silakan coba lagi.",
+        description: error.message || "Failed to add project. Please try again.",
         variant: "destructive"
       });
     }
@@ -131,22 +170,36 @@ const ProjectGallery = () => {
 
   const handleUpdateProject = async (updatedProject: Project) => {
     try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can update projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       const result = await updateProject(updatedProject);
       console.log("Project updated successfully:", result);
+      
       setIsEditFormOpen(false);
       
-      // Close the form and refresh projects
-      await refreshProjects();
-      
       if (selectedProject?.id === updatedProject.id) {
-        // Update the selected project if it's the one being edited
         setSelectedProject(result);
       }
-    } catch (error) {
+      
+      toast({
+        title: "Success",
+        description: "Project updated successfully",
+      });
+      
+      await refreshProjects();
+    } catch (error: any) {
       console.error('Error updating project:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui project di database. Silakan coba lagi.",
+        description: error.message || "Failed to update project. Please try again.",
         variant: "destructive"
       });
     }
@@ -154,27 +207,35 @@ const ProjectGallery = () => {
 
   const handleDeleteProjectConfirm = async (id: string) => {
     try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can delete projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       await deleteProject(id);
       setIsDeleteDialogOpen(false);
       
-      // If the deleted project is currently selected, close the modal
       if (selectedProject?.id === id) {
         setIsModalOpen(false);
         setSelectedProject(null);
       }
       
-      // Refresh projects after deletion
-      await refreshProjects();
-      
       toast({
         title: "Success",
-        description: "Project berhasil dihapus.",
+        description: "Project deleted successfully",
       });
-    } catch (error) {
+      
+      await refreshProjects();
+    } catch (error: any) {
       console.error('Error deleting project:', error);
       toast({
         title: "Error",
-        description: "Gagal menghapus project dari database. Silakan coba lagi.",
+        description: error.message || "Failed to delete project. Please try again.",
         variant: "destructive"
       });
     }
@@ -186,13 +247,13 @@ const ProjectGallery = () => {
       await refreshProjects();
       toast({
         title: "Refreshed",
-        description: "Data project telah diperbarui dari database.",
+        description: "Projects refreshed successfully",
       });
     } catch (error) {
       console.error('Error refreshing projects:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui data dari database.",
+        description: "Failed to refresh projects",
         variant: "destructive"
       });
     } finally {
@@ -231,7 +292,7 @@ const ProjectGallery = () => {
             <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
           </HexaButton>
           
-          {isAdmin && isAuthenticated && (
+          {isAdmin && (
             <HexaButton variant="hexa" size="sm" className="gap-1" onClick={handleAddNewProject}>
               <Plus size={14} />
               <span>New Project</span>
@@ -319,8 +380,8 @@ const ProjectGallery = () => {
               key={project.id} 
               project={project} 
               onClick={handleProjectClick}
-              onEdit={isAuthenticated ? handleEditProject : undefined}
-              onDelete={isAuthenticated ? handleDeleteProject : undefined}
+              onEdit={isAdmin ? handleEditProject : undefined}
+              onDelete={isAdmin ? handleDeleteProject : undefined}
             />
           ))}
         </div>
@@ -336,7 +397,7 @@ const ProjectGallery = () => {
         project={selectedProject} 
         isOpen={isModalOpen} 
         onClose={closeModal}
-        onEdit={isAuthenticated && selectedProject ? () => handleEditProject(selectedProject) : undefined}
+        onEdit={isAdmin && selectedProject ? () => handleEditProject(selectedProject) : undefined}
       />
       
       {isAddFormOpen && (
