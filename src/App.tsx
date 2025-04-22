@@ -3,13 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
-import React from "react";
-import { supabase } from "./integrations/supabase/client";
+import React, { useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Protected route component
@@ -19,9 +18,11 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // Redirect to login with the return URL
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   
   return <>{children}</>;
@@ -34,9 +35,10 @@ interface AdminRouteProps {
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
   const { isAuthenticated, currentUser } = useAuth();
+  const location = useLocation();
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   
   if (currentUser?.role !== 'admin') {
@@ -48,7 +50,13 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
 
 // App routes with authentication
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, checkAuthStatus } = useAuth();
+  const location = useLocation();
+
+  // Check auth status on route change
+  useEffect(() => {
+    checkAuthStatus();
+  }, [location.pathname, checkAuthStatus]);
   
   return (
     <Routes>

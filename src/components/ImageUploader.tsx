@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { HexaButton } from './ui/hexa-button';
@@ -24,9 +24,31 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
+  const [bucketExists, setBucketExists] = useState<boolean | null>(null);
   
   // Check if the current image is a placeholder
   const isPlaceholder = currentImageUrl.includes('placeholder') || !currentImageUrl;
+
+  // Check if bucket exists on component mount
+  useEffect(() => {
+    const checkBucket = async () => {
+      try {
+        const { data, error } = await supabase.storage.getBucket(bucketName);
+        if (error) {
+          console.error('Error checking bucket:', error.message);
+          setBucketExists(false);
+        } else {
+          console.log('Bucket exists:', data);
+          setBucketExists(true);
+        }
+      } catch (error) {
+        console.error('Error in bucket check:', error);
+        setBucketExists(false);
+      }
+    };
+    
+    checkBucket();
+  }, [bucketName]);
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -42,21 +64,18 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         throw new Error('You must select an image to upload');
       }
       
+      // Check if bucket exists
+      if (bucketExists === false) {
+        throw new Error(`Storage bucket "${bucketName}" not found. Please create it first.`);
+      }
+      
       // Create a unique file name to avoid collisions
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
       const filePath = folderPath ? `${folderPath}/${fileName}` : fileName;
       
-      // Check if bucket exists
-      const { data: bucketData, error: bucketError } = await supabase
-        .storage
-        .getBucket(bucketName);
-        
-      if (bucketError && bucketError.message.includes('The resource was not found')) {
-        console.error('Bucket not found:', bucketName);
-        throw new Error(`Storage bucket "${bucketName}" not found. Please create it first.`);
-      }
-
+      console.log(`Uploading file to ${bucketName}/${filePath}`);
+      
       // Upload the file to Supabase Storage
       const { data, error } = await supabase
         .storage
@@ -111,7 +130,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     } finally {
       setUploading(false);
     }
-  }, [bucketName, folderPath, onImageUploaded]);
+  }, [bucketName, folderPath, onImageUploaded, bucketExists]);
 
   const handleFileChange = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,6 +177,15 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             )}
           </div>
         )}
+        
+        {bucketExists === false && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <div className="text-white text-center p-4">
+              <p className="mb-2">Storage bucket not configured</p>
+              <p className="text-xs">Contact administrator to set up storage bucket: {bucketName}</p>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="flex gap-2 w-full">
@@ -166,14 +194,14 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            disabled={uploading}
+            disabled={uploading || bucketExists === false}
             className="hidden"
           />
           <HexaButton
             type="button"
             variant={isPlaceholder ? "hexa" : "outline"}
             className="w-full"
-            disabled={uploading}
+            disabled={uploading || bucketExists === false}
             asChild
           >
             <span>

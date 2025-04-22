@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,6 +11,12 @@ import { X, Plus, Link } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
+import { toast } from '@/components/ui/use-toast';
+
+// Separate components to reduce file size and improve maintainability
+import TagSelector from './ProjectForm/TagSelector';
+import FeatureInput from './ProjectForm/FeatureInput';
+import ScreenshotManager from './ProjectForm/ScreenshotManager';
 
 type ProjectFormValues = Omit<Project, 'id' | 'createdAt'>;
 
@@ -31,7 +38,6 @@ const ProjectForm = ({
   const [screenshots, setScreenshots] = useState<string[]>(
     defaultValues?.screenshots || ['/placeholder.svg']
   );
-  const [newTag, setNewTag] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>(
     defaultValues?.tags || []
   );
@@ -39,7 +45,6 @@ const ProjectForm = ({
   const [features, setFeatures] = useState<string[]>(
     defaultValues?.features || []
   );
-  const [newFeature, setNewFeature] = useState('');
 
   const form = useForm<ProjectFormValues>({
     defaultValues: defaultValues || {
@@ -54,63 +59,27 @@ const ProjectForm = ({
     },
   });
 
-  const addScreenshot = () => {
-    setScreenshots([...screenshots, '/placeholder.svg']);
-  };
-
-  const removeScreenshot = (index: number) => {
-    setScreenshots(screenshots.filter((_, i) => i !== index));
-  };
-
-  const addTag = () => {
-    if (newTag && !selectedTags.includes(newTag)) {
-      setSelectedTags([...selectedTags, newTag]);
-      setNewTag('');
-    }
-  };
-
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setSelectedTags(selectedTags.filter(t => t !== tag));
-  };
-
   const handleCoverImageUploaded = (result: FileUploadResult) => {
     setCoverImage(result.url);
   };
 
-  const handleScreenshotUploaded = (index: number, result: FileUploadResult) => {
-    const newScreenshots = [...screenshots];
-    newScreenshots[index] = result.url;
-    setScreenshots(newScreenshots);
-  };
-
-  const addFeature = () => {
-    if (newFeature && !features.includes(newFeature)) {
-      setFeatures([...features, newFeature]);
-      setNewFeature('');
-    }
-  };
-
-  const removeFeature = (feature: string) => {
-    setFeatures(features.filter(f => f !== feature));
-  };
-
   const handleSubmit = (data: ProjectFormValues) => {
-    onSubmit({
-      ...data,
-      coverImage,
-      screenshots,
-      tags: selectedTags,
-      features,
-    });
-    onClose();
+    try {
+      onSubmit({
+        ...data,
+        coverImage,
+        screenshots,
+        tags: selectedTags,
+        features,
+      });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit form. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -123,6 +92,7 @@ const ProjectForm = ({
         <ScrollArea className="max-h-[75vh] overflow-y-auto px-1">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 pr-3">
+              {/* Basic Details */}
               <FormField
                 control={form.control}
                 name="title"
@@ -156,6 +126,7 @@ const ProjectForm = ({
               />
 
               <div className="grid grid-cols-1 gap-4">
+                {/* Cover Image */}
                 <FormItem>
                   <FormLabel>Cover Image</FormLabel>
                   <FormControl>
@@ -169,6 +140,7 @@ const ProjectForm = ({
                   <FormMessage />
                 </FormItem>
                 
+                {/* Demo URL */}
                 <FormField
                   control={form.control}
                   name="demoUrl"
@@ -189,6 +161,7 @@ const ProjectForm = ({
                 />
               </div>
 
+              {/* Category */}
               <FormField
                 control={form.control}
                 name="category"
@@ -211,137 +184,26 @@ const ProjectForm = ({
                 )}
               />
 
-              <div className="space-y-2">
-                <FormLabel>Screenshots</FormLabel>
-                <div className="space-y-2">
-                  {screenshots.map((screenshot, i) => (
-                    <div key={i}>
-                      <ImageUploader 
-                        currentImageUrl={screenshot}
-                        onImageUploaded={(result) => handleScreenshotUploaded(i, result)}
-                        bucketName="project-images"
-                        folderPath="screenshots"
-                        className="mb-2"
-                      />
-                      {screenshots.length > 1 && (
-                        <HexaButton
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeScreenshot(i)}
-                          className="mb-2"
-                        >
-                          <X size={16} className="mr-1" />
-                          Remove Screenshot
-                        </HexaButton>
-                      )}
-                    </div>
-                  ))}
-                  <HexaButton
-                    type="button"
-                    variant="outline"
-                    onClick={addScreenshot}
-                    className="w-full mt-2"
-                  >
-                    <Plus size={16} className="mr-2" />
-                    Add Screenshot
-                  </HexaButton>
-                </div>
-              </div>
+              {/* Screenshots */}
+              <ScreenshotManager
+                screenshots={screenshots}
+                setScreenshots={setScreenshots} 
+              />
 
-              <div className="space-y-2">
-                <FormLabel>Tags</FormLabel>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedTags.map(tag => (
-                    <div key={tag} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                      <span>{tag}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add new tag"
-                    value={newTag}
-                    onChange={e => setNewTag(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addTag();
-                      }
-                    }}
-                  />
-                  <HexaButton
-                    type="button"
-                    onClick={addTag}
-                    variant="outline"
-                    size="icon"
-                  >
-                    <Plus size={16} />
-                  </HexaButton>
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm text-gray-500 mb-1">Common tags:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 10).map(tag => (
-                      <button
-                        key={tag}
-                        type="button"
-                        className="bg-secondary text-foreground px-2 py-0.5 rounded-full text-xs"
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              {/* Tags */}
+              <TagSelector 
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
+                availableTags={allTags}
+              />
 
-              <div className="space-y-2">
-                <FormLabel>Key Features</FormLabel>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {features.map(feature => (
-                    <div key={feature} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                      <span>{feature}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFeature(feature)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add key feature"
-                    value={newFeature}
-                    onChange={e => setNewFeature(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addFeature();
-                      }
-                    }}
-                  />
-                  <HexaButton
-                    type="button"
-                    onClick={addFeature}
-                    variant="outline"
-                    size="icon"
-                  >
-                    <Plus size={16} />
-                  </HexaButton>
-                </div>
-              </div>
+              {/* Features */}
+              <FeatureInput
+                features={features}
+                setFeatures={setFeatures}
+              />
 
+              {/* Submit Buttons */}
               <div className="flex justify-end gap-2 pt-4">
                 <HexaButton type="button" variant="outline" onClick={onClose}>
                   Cancel

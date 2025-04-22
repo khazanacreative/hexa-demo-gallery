@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
 import ProjectDetailsModal from './ProjectDetailsModal';
@@ -24,7 +24,7 @@ const ProjectGallery = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   
-  const { currentUser } = useAuth();
+  const { currentUser, isAuthenticated: authStatus } = useAuth();
   const { 
     filteredProjects, 
     addProject, 
@@ -42,21 +42,26 @@ const ProjectGallery = () => {
   
   const isAdmin = currentUser?.role === 'admin';
 
-  // Check authentication status
-  useState(() => {
+  // Update isAuthenticated when auth status changes
+  useEffect(() => {
+    setIsAuthenticated(authStatus);
+  }, [authStatus]);
+
+  // Check authentication status on mount
+  useEffect(() => {
     const checkAuth = async () => {
       const { data } = await supabase.auth.getSession();
       setIsAuthenticated(!!data.session);
     };
     checkAuth();
-  });
+  }, []);
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
     setIsModalOpen(true);
   };
 
-  const handleEditProject = async (project: Project) => {
+  const handleEditProject = useCallback(async (project: Project) => {
     // Check authentication before editing
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
@@ -70,9 +75,9 @@ const ProjectGallery = () => {
     
     setSelectedProject(project);
     setIsEditFormOpen(true);
-  };
+  }, []);
 
-  const handleDeleteProject = async (project: Project) => {
+  const handleDeleteProject = useCallback(async (project: Project) => {
     // Check authentication before deleting
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
@@ -86,7 +91,7 @@ const ProjectGallery = () => {
     
     setProjectToDelete(project);
     setIsDeleteDialogOpen(true);
-  };
+  }, []);
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -112,6 +117,8 @@ const ProjectGallery = () => {
       const newProject = await addProject(projectData);
       console.log("Project added successfully:", newProject);
       setIsAddFormOpen(false);
+      
+      await refreshProjects(); // Refresh projects after adding
     } catch (error) {
       console.error('Error adding project:', error);
       toast({
@@ -127,6 +134,14 @@ const ProjectGallery = () => {
       const result = await updateProject(updatedProject);
       console.log("Project updated successfully:", result);
       setIsEditFormOpen(false);
+      
+      // Close the form and refresh projects
+      await refreshProjects();
+      
+      if (selectedProject?.id === updatedProject.id) {
+        // Update the selected project if it's the one being edited
+        setSelectedProject(result);
+      }
     } catch (error) {
       console.error('Error updating project:', error);
       toast({
@@ -141,6 +156,20 @@ const ProjectGallery = () => {
     try {
       await deleteProject(id);
       setIsDeleteDialogOpen(false);
+      
+      // If the deleted project is currently selected, close the modal
+      if (selectedProject?.id === id) {
+        setIsModalOpen(false);
+        setSelectedProject(null);
+      }
+      
+      // Refresh projects after deletion
+      await refreshProjects();
+      
+      toast({
+        title: "Success",
+        description: "Project berhasil dihapus.",
+      });
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({
