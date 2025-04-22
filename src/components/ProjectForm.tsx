@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
@@ -12,6 +12,7 @@ import { allTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 // Separate components to reduce file size and improve maintainability
 import TagSelector from './ProjectForm/TagSelector';
@@ -63,8 +64,30 @@ const ProjectForm = ({
     setCoverImage(result.url);
   };
 
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    if (defaultValues && currentUser?.role !== 'admin') {
+      toast({
+        title: "Akses Ditolak",
+        description: "Hanya admin yang dapat mengedit data project.",
+        variant: "destructive"
+      });
+      onClose();
+    }
+  }, [defaultValues, currentUser, onClose]);
+
   const handleSubmit = (data: ProjectFormValues) => {
     try {
+      if (defaultValues && currentUser?.role !== 'admin') {
+        toast({
+          title: "Akses Ditolak",
+          description: "Hanya admin yang dapat mengedit data project.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       onSubmit({
         ...data,
         coverImage,
@@ -76,7 +99,7 @@ const ProjectForm = ({
       console.error('Error submitting form:', error);
       toast({
         title: "Error",
-        description: "Failed to submit form. Please try again.",
+        description: "Gagal menyimpan data. Silakan coba lagi.",
         variant: "destructive"
       });
     }
