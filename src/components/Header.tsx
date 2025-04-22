@@ -14,8 +14,13 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/login'); // Explicitly navigate to login page after logout
+    try {
+      await logout();
+      // Force navigation to login page
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   return (

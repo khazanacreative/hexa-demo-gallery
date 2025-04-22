@@ -80,6 +80,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsAuthenticated(true);
         return true;
       } else {
+        // Try to check if we have a user in localStorage
+        const localUser = localStorage.getItem('hexa_currentUser');
+        if (localUser) {
+          const parsedUser = JSON.parse(localUser);
+          setCurrentUser(parsedUser);
+          setIsAuthenticated(true);
+          return true;
+        }
+        
         setCurrentUser(null);
         setIsAuthenticated(false);
         return false;
@@ -102,11 +111,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session);
       if (event === 'SIGNED_IN' && session) {
         await checkAuthStatus();
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setIsAuthenticated(false);
+        localStorage.removeItem('hexa_currentUser');
       }
     });
 
@@ -118,47 +129,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Try to authenticate with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      console.log("Trying to login with:", email);
       
-      if (error) throw error;
-      
-      if (data.user) {
-        // Find the corresponding user in our local database
-        const userId = data.user.id;
-        let user = users.find(u => u.id === userId);
-        
-        // If user doesn't exist locally, create one
-        if (!user) {
-          user = {
-            id: userId,
-            name: data.user.email || 'User',
-            email: data.user.email || '',
-            role: 'user', // Default role
-          };
-          
-          setUsers(prevUsers => [...prevUsers, user as AuthUser]);
-        }
-        
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-        return true;
-      }
-      
-      // Fallback to local auth if Supabase fails
+      // First try the local database
       const user = users.find(u => u.email === email && u.password === password);
       
       if (user) {
+        console.log("Found local user:", user);
         // Create a copy of the user without the password for security
         const { password: _, ...userWithoutPassword } = user;
         setCurrentUser(user);
         setIsAuthenticated(true);
+        // Save to localStorage for persistence
+        localStorage.setItem('hexa_currentUser', JSON.stringify(user));
         return true;
       }
       
+      // If not found locally, try with Supabase
+      try {
+        console.log("Trying Supabase login");
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (error) {
+          console.error("Supabase login error:", error);
+          throw error;
+        }
+        
+        if (data.user) {
+          console.log("Supabase login success:", data);
+          // Find the corresponding user in our local database
+          const userId = data.user.id;
+          let localUser = users.find(u => u.id === userId);
+          
+          // If user doesn't exist locally, create one
+          if (!localUser) {
+            localUser = {
+              id: userId,
+              name: data.user.email || 'User',
+              email: data.user.email || '',
+              role: 'user', // Default role
+            };
+            
+            setUsers(prevUsers => [...prevUsers, localUser as AuthUser]);
+          }
+          
+          setCurrentUser(localUser);
+          setIsAuthenticated(true);
+          localStorage.setItem('hexa_currentUser', JSON.stringify(localUser));
+          return true;
+        }
+      } catch (supabaseError) {
+        console.error("Caught Supabase error:", supabaseError);
+        // Continue to return false as the login failed
+      }
+      
+      console.log("Login failed - no matching user found");
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -173,9 +201,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void> => {
     try {
+      // Try to sign out from Supabase regardless of local state
       await supabase.auth.signOut();
+      
+      // Clear local state
       setCurrentUser(null);
       setIsAuthenticated(false);
+      localStorage.removeItem('hexa_currentUser');
     } catch (error) {
       console.error('Logout error:', error);
       toast({
@@ -193,6 +225,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const newRole: UserRole = currentUser.role === 'admin' ? 'user' : 'admin';
     const updatedUser = { ...currentUser, role: newRole };
     setCurrentUser(updatedUser);
+    
+    // Update localStorage
+    localStorage.setItem('hexa_currentUser', JSON.stringify(updatedUser));
     
     // Also update the user in the users array
     setUsers(prevUsers => 

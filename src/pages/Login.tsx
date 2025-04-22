@@ -1,33 +1,48 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Lock, AtSign } from 'lucide-react';
+import { Lock, AtSign, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [error, setError] = useState('');
+  const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Redirect to home or last visited page
+      const from = location.state?.from || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     
     try {
+      console.log('Attempting login with:', email, password);
       const success = await login(email, password);
+      
       if (success) {
         toast({
           title: "Login successful",
           description: "Welcome back!",
         });
-        navigate('/');
+        // Redirect will happen automatically via the useEffect
       } else {
+        setError('Invalid email or password');
         toast({
           title: "Login failed",
           description: "Invalid email or password",
@@ -35,12 +50,13 @@ const Login = () => {
         });
       }
     } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred during login');
       toast({
         title: "Login error",
         description: "An error occurred during login",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +73,13 @@ const Login = () => {
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center gap-2">
+              <AlertCircle size={18} />
+              <span>{error}</span>
+            </div>
+          )}
+          
           <div className="space-y-4">
             <div className="relative">
               <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
