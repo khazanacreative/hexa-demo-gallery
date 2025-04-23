@@ -1,16 +1,13 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
-// Extended user interface with email and password
 interface AuthUser extends User {
   email: string;
   password?: string;
 }
 
-// New user creation interface
 interface UserCreationData {
   name: string;
   email: string;
@@ -32,27 +29,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Initial admin and user accounts
 const initialUsers: AuthUser[] = [
   {
     id: '1',
     name: 'Admin User',
     email: 'admin@example.com',
-    password: 'password', // In a real app, this would be hashed
+    password: 'password',
     role: 'admin',
   },
   {
     id: '2',
     name: 'Test User',
     email: 'user@example.com',
-    password: 'password', // In a real app, this would be hashed
+    password: 'password',
     role: 'user',
   },
 ];
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<AuthUser[]>(() => {
-    // Try to load users from localStorage on initial load
     const savedUsers = localStorage.getItem('hexa_users');
     return savedUsers ? JSON.parse(savedUsers) : initialUsers;
   });
@@ -60,10 +55,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  // Check authentication status on mount
   const checkAuthStatus = useCallback(async (): Promise<boolean> => {
     try {
-      // First check local storage - fastest way
       const localUser = localStorage.getItem('hexa_currentUser');
       if (localUser) {
         const parsedUser = JSON.parse(localUser);
@@ -72,48 +65,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
       
-      // Then check Supabase session
       const { data } = await supabase.auth.getSession();
       
       if (data.session) {
-        // Find the corresponding user in our local database
         const userId = data.session.user.id;
-        
-        // Try to find in existing users first
         let user = users.find(u => u.id === userId);
         
-        // If not found, create a default user object
+        let userRole = "user";
+        if (data.session.user && data.session.user.user_metadata && data.session.user.user_metadata.role) {
+          userRole = data.session.user.user_metadata.role;
+        } else if (
+          data.session.user &&
+          data.session.user.raw_user_meta_data &&
+          data.session.user.raw_user_meta_data.role
+        ) {
+          userRole = data.session.user.raw_user_meta_data.role;
+        }
+        
         if (!user) {
           user = {
             id: userId,
             name: data.session.user.email?.split('@')[0] || 'User',
             email: data.session.user.email || '',
-            role: 'admin', // Default role for Supabase users (since this is a demo)
+            role: userRole,
           };
-          
-          // Add to users list
           setUsers(prevUsers => [...prevUsers, user as AuthUser]);
+        } else if (userRole && user.role !== userRole) {
+          user = { ...user, role: userRole };
+          setUsers(prevUsers => prevUsers.map(u => u.id === userId ? user as AuthUser : u));
         }
         
-        // Update current user and authentication status
-        setCurrentUser(user);
+        setCurrentUser(user as AuthUser);
         setIsAuthenticated(true);
-        
-        // Save to localStorage for faster access next time
         localStorage.setItem('hexa_currentUser', JSON.stringify(user));
-        
         return true;
       }
       
-      // If no session found
       setCurrentUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('hexa_currentUser');
       return false;
-      
     } catch (error) {
       console.error('Error checking auth status:', error);
-      // Clear everything to be safe
       setCurrentUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('hexa_currentUser');
@@ -121,16 +114,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [users]);
 
-  // Save users to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('hexa_users', JSON.stringify(users));
   }, [users]);
   
-  // Check auth status on initial load
   useEffect(() => {
     checkAuthStatus();
     
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session);
       if (event === 'SIGNED_IN' && session) {
@@ -142,7 +132,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // Clean up subscription
     return () => {
       subscription.unsubscribe();
     };
@@ -152,14 +141,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("Trying to login with:", email);
       
-      // First try the local database
       const user = users.find(u => u.email === email && u.password === password);
       
       if (user) {
         console.log("Found local user:", user);
         setCurrentUser(user);
         setIsAuthenticated(true);
-        // Save to localStorage for persistence
         localStorage.setItem('hexa_currentUser', JSON.stringify(user));
         
         toast({
@@ -170,7 +157,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return true;
       }
       
-      // If not found locally, try with Supabase
       try {
         console.log("Trying Supabase login");
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -185,17 +171,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (data.user) {
           console.log("Supabase login success:", data);
-          // Find the corresponding user in our local database
           const userId = data.user.id;
           let localUser = users.find(u => u.id === userId);
           
-          // If user doesn't exist locally, create one
           if (!localUser) {
             localUser = {
               id: userId,
               name: data.user.email?.split('@')[0] || 'User',
               email: data.user.email || '',
-              role: 'admin', // Default to admin for demo purposes
+              role: 'admin',
             };
             
             setUsers(prevUsers => [...prevUsers, localUser as AuthUser]);
@@ -216,7 +200,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       } catch (supabaseError) {
         console.error("Caught Supabase error:", supabaseError);
-        // Continue to return false as the login failed
         return false;
       }
     } catch (error) {
@@ -232,12 +215,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void> => {
     try {
-      // First clear local state
       setCurrentUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('hexa_currentUser');
       
-      // Then try to sign out from Supabase
       await supabase.auth.signOut();
       
       toast({
@@ -253,7 +234,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive"
       });
       
-      // Still clear local state even if Supabase logout fails
       setCurrentUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('hexa_currentUser');
@@ -263,15 +243,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const toggleRole = () => {
     if (!currentUser) return;
     
-    // This is for demo purposes only - in a real app you wouldn't do this
     const newRole: UserRole = currentUser.role === 'admin' ? 'user' : 'admin';
     const updatedUser = { ...currentUser, role: newRole };
     setCurrentUser(updatedUser);
     
-    // Update localStorage
     localStorage.setItem('hexa_currentUser', JSON.stringify(updatedUser));
     
-    // Also update the user in the users array
     setUsers(prevUsers => 
       prevUsers.map(user => 
         user.id === currentUser.id ? updatedUser : user
@@ -286,7 +263,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const addUser = async (userData: UserCreationData): Promise<void> => {
     try {
-      // Create user in Supabase
       const { data, error } = await supabase.auth.admin.createUser({
         email: userData.email,
         password: userData.password,
@@ -299,7 +275,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: data.user?.id || crypto.randomUUID(),
         name: userData.name,
         email: userData.email,
-        password: userData.password, // In a real app, this would be hashed
+        password: userData.password,
         role: userData.role,
       };
       
@@ -312,7 +288,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       console.error('Error adding user:', error);
       
-      // Fallback to local user creation
       const newUser: AuthUser = {
         id: crypto.randomUUID(),
         ...userData
@@ -329,7 +304,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const removeUser = async (userId: string): Promise<void> => {
     try {
-      // Don't allow removing the currently logged in user
       if (currentUser?.id === userId) {
         throw new Error("Cannot remove currently logged in user");
       }
