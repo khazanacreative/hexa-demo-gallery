@@ -23,24 +23,34 @@ const ProjectAdminControls = ({
   // Check admin status when authentication or user changes
   useEffect(() => {
     const verifyAdminStatus = async () => {
-      try {
-        // First check current state
-        if (currentUser && currentUser.role === 'admin') {
-          setIsAdmin(true);
-          return;
+      // First check current state without calling checkAuthStatus to prevent infinite loops
+      if (currentUser && currentUser.role === 'admin') {
+        setIsAdmin(true);
+        return;
+      }
+      
+      // Only call checkAuthStatus if not already authenticated or if currentUser is null
+      if (!isAuthenticated || !currentUser) {
+        try {
+          const isAuth = await checkAuthStatus();
+          if (isAuth && currentUser?.role === 'admin') {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+          }
+        } catch (error) {
+          console.error("Error verifying admin status:", error);
+          setIsAdmin(false);
         }
-        
-        // If not admin or not authenticated, check auth status
-        const isAuth = await checkAuthStatus();
-        setIsAdmin(isAuth && currentUser?.role === 'admin');
-      } catch (error) {
-        console.error("Error verifying admin status:", error);
+      } else {
+        // If authenticated but not admin
         setIsAdmin(false);
       }
     };
     
     verifyAdminStatus();
-  }, [currentUser, isAuthenticated, checkAuthStatus]);
+  }, [currentUser, isAuthenticated]);
+  // Removed checkAuthStatus from dependencies to prevent infinite loops
 
   if (!isAdmin) return null;
 
