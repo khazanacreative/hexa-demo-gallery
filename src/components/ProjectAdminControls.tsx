@@ -3,7 +3,7 @@ import { Project } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from './ui/use-toast';
 
 interface ProjectAdminControlsProps {
@@ -18,18 +18,10 @@ const ProjectAdminControls = ({
   onDelete
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
   
-  // Fix the infinite update loop by adding currentUser to dependency array
-  // and only updating isAdmin when currentUser changes
-  useEffect(() => {
-    if (currentUser && currentUser.role === 'admin') {
-      setIsAdmin(true);
-    } else {
-      setIsAdmin(false);
-    }
-  }, [currentUser]); // Add the dependency to prevent infinite loop
-
+  // Instead of using useState and useEffect, directly compute the isAdmin value
+  const isAdmin = currentUser?.role === 'admin';
+  
   if (!isAdmin) return null;
 
   const handleEdit = (e: React.MouseEvent) => {

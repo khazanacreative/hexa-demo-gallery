@@ -169,7 +169,7 @@ export function useProjectDatabase() {
       throw new Error('User not authenticated');
     }
 
-    // Create a new project object
+    // Create a new project object with proper field names for Supabase
     const newProject = {
       title: projectData.title,
       description: projectData.description,
@@ -280,7 +280,7 @@ export function useProjectDatabase() {
         throw new Error('User not authenticated');
       }
 
-      // Update in database
+      // Update in database with properly formatted data
       const { data, error } = await supabase
         .from('projects')
         .update({
