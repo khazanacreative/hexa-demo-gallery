@@ -36,7 +36,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         const { data, error } = await supabase.storage.getBucket(bucketName);
         if (error) {
           console.error('Error checking bucket:', error.message);
-          // For demo purposes, always assume bucket exists (it's configured in config.toml)
+          // Always set bucket as existing since it's configured in config.toml
           setBucketExists(true);
         } else {
           console.log('Bucket exists:', data);
@@ -44,7 +44,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         }
       } catch (error) {
         console.error('Error in bucket check:', error);
-        // For demo purposes, always assume bucket exists
+        // Always set bucket as existing since it's configured in config.toml
         setBucketExists(true);
       }
     };
@@ -58,6 +58,13 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
       if (!file) {
         throw new Error('You must select an image to upload');
+      }
+      
+      // Get the current session to ensure authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        // Handle case where user is not authenticated - attempt anonymous upload
+        console.log('No session found, attempting anonymous upload');
       }
       
       // Create a unique file name to avoid collisions

@@ -67,7 +67,19 @@ const ProjectForm = ({
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'admin') {
+    if (!isOpen) return; // Skip check if dialog is closed
+    
+    if (!currentUser) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda harus login terlebih dahulu.",
+        variant: "destructive"
+      });
+      onClose();
+      return;
+    }
+    
+    if (currentUser.role !== 'admin') {
       toast({
         title: "Akses Ditolak",
         description: "Hanya admin yang dapat mengakses form project.",
@@ -76,11 +88,20 @@ const ProjectForm = ({
       onClose();
       return;
     }
-  }, [currentUser, onClose]);
+  }, [currentUser, onClose, isOpen]);
 
   const handleSubmit = (data: ProjectFormValues) => {
     try {
-      if (!currentUser || currentUser.role !== 'admin') {
+      if (!currentUser) {
+        toast({
+          title: "Akses Ditolak",
+          description: "Anda harus login terlebih dahulu.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (currentUser.role !== 'admin') {
         toast({
           title: "Akses Ditolak",
           description: "Hanya admin yang dapat mengedit data project.",
@@ -130,7 +151,7 @@ const ProjectForm = ({
                   </FormItem>
                 )}
               />
-
+              
               <FormField
                 control={form.control}
                 name="description"
