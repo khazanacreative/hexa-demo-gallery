@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { FormLabel } from '@/components/ui/form';
 import { X, Plus } from 'lucide-react';
@@ -26,7 +26,7 @@ const FeatureInput = ({ features, setFeatures }: FeatureInputProps) => {
 
   return (
     <div className="space-y-2">
-      <FormLabel>Key Features</FormLabel>
+      <FormLabel>Features</FormLabel>
       <div className="flex flex-wrap gap-2 mb-2">
         {features.map(feature => (
           <div key={feature} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
@@ -42,12 +42,13 @@ const FeatureInput = ({ features, setFeatures }: FeatureInputProps) => {
         ))}
       </div>
       <div className="flex gap-2">
-        <Input
-          placeholder="Add key feature"
+        <Textarea
+          placeholder="Add feature"
           value={newFeature}
           onChange={e => setNewFeature(e.target.value)}
+          className="min-h-[80px]"
           onKeyDown={e => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && e.ctrlKey) {
               e.preventDefault();
               addFeature();
             }
@@ -57,9 +58,10 @@ const FeatureInput = ({ features, setFeatures }: FeatureInputProps) => {
           type="button"
           onClick={addFeature}
           variant="outline"
-          size="icon"
+          className="self-start"
         >
-          <Plus size={16} />
+          <Plus size={16} className="mr-1" />
+          Add
         </HexaButton>
       </div>
     </div>

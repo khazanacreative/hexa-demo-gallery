@@ -233,7 +233,7 @@ const ProjectForm = ({
                 availableTags={allTags}
               />
 
-              {/* Features */}
+              {/* Features - changed from "Key Features" to just "Features" */}
               <FeatureInput
                 features={features}
                 setFeatures={setFeatures}

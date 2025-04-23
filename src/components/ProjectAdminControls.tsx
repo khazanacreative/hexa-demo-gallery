@@ -20,14 +20,15 @@ const ProjectAdminControls = ({
   const { currentUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // Simplified admin check using only the currentUser
+  // Fix the infinite update loop by adding currentUser to dependency array
+  // and only updating isAdmin when currentUser changes
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
       setIsAdmin(true);
     } else {
       setIsAdmin(false);
     }
-  }, [currentUser]);
+  }, [currentUser]); // Add the dependency to prevent infinite loop
 
   if (!isAdmin) return null;
 
