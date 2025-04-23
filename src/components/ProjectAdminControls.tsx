@@ -17,91 +17,48 @@ const ProjectAdminControls = ({
   onEdit, 
   onDelete
 }: ProjectAdminControlsProps) => {
-  const { currentUser, isAuthenticated, checkAuthStatus } = useAuth();
+  const { currentUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // Check admin status when authentication or user changes
+  // Simplified admin check using only the currentUser
   useEffect(() => {
-    const verifyAdminStatus = async () => {
-      // First check current state without calling checkAuthStatus to prevent infinite loops
-      if (currentUser && currentUser.role === 'admin') {
-        setIsAdmin(true);
-        return;
-      }
-      
-      // Only call checkAuthStatus if not already authenticated or if currentUser is null
-      if (!isAuthenticated || !currentUser) {
-        try {
-          const isAuth = await checkAuthStatus();
-          if (isAuth && currentUser?.role === 'admin') {
-            setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
-          }
-        } catch (error) {
-          console.error("Error verifying admin status:", error);
-          setIsAdmin(false);
-        }
-      } else {
-        // If authenticated but not admin
-        setIsAdmin(false);
-      }
-    };
-    
-    verifyAdminStatus();
-  }, [currentUser, isAuthenticated]);
-  // Removed checkAuthStatus from dependencies to prevent infinite loops
+    if (currentUser && currentUser.role === 'admin') {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [currentUser]);
 
   if (!isAdmin) return null;
 
-  const handleEdit = async (e: React.MouseEvent) => {
+  const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await checkAuthStatus(); // Re-check auth status before edit
-      
-      if (!currentUser || currentUser.role !== 'admin') {
-        toast({
-          title: "Authentication Required",
-          description: "You must be logged in as admin to edit projects",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (onEdit) onEdit(project);
-    } catch (error) {
-      console.error("Error in edit handler:", error);
+    
+    if (!currentUser || currentUser.role !== 'admin') {
       toast({
-        title: "Authentication Error",
-        description: "Failed to verify your credentials. Please try logging in again.",
+        title: "Authentication Required",
+        description: "You must be logged in as admin to edit projects",
         variant: "destructive"
       });
+      return;
     }
+    
+    if (onEdit) onEdit(project);
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    try {
-      await checkAuthStatus(); // Re-check auth status before delete
-      
-      if (!currentUser || currentUser.role !== 'admin') {
-        toast({
-          title: "Authentication Required",
-          description: "You must be logged in as admin to delete projects",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (onDelete) onDelete(project);
-    } catch (error) {
-      console.error("Error in delete handler:", error);
+    
+    if (!currentUser || currentUser.role !== 'admin') {
       toast({
-        title: "Authentication Error",
-        description: "Failed to verify your credentials. Please try logging in again.",
+        title: "Authentication Required",
+        description: "You must be logged in as admin to delete projects",
         variant: "destructive"
       });
+      return;
     }
+    
+    if (onDelete) onDelete(project);
   };
 
   return (

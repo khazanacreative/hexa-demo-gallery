@@ -29,15 +29,16 @@ const ScreenshotManager = ({ screenshots, setScreenshots }: ScreenshotManagerPro
   return (
     <div className="space-y-2">
       <FormLabel>Screenshots</FormLabel>
-      <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
         {screenshots.map((screenshot, i) => (
-          <div key={i}>
+          <div key={i} className="mb-2">
             <ImageUploader 
               currentImageUrl={screenshot}
               onImageUploaded={(result) => handleScreenshotUploaded(i, result)}
               bucketName="project-images"
               folderPath="screenshots"
-              className="mb-2"
+              className="mb-1"
+              compact={true}
             />
             {screenshots.length > 1 && (
               <HexaButton
@@ -45,24 +46,25 @@ const ScreenshotManager = ({ screenshots, setScreenshots }: ScreenshotManagerPro
                 variant="outline"
                 size="sm"
                 onClick={() => removeScreenshot(i)}
-                className="mb-2"
+                className="w-full mt-1"
               >
-                <X size={16} className="mr-1" />
-                Remove Screenshot
+                <X size={14} className="mr-1" />
+                Remove
               </HexaButton>
             )}
           </div>
         ))}
-        <HexaButton
-          type="button"
-          variant="outline"
-          onClick={addScreenshot}
-          className="w-full mt-2"
-        >
-          <Plus size={16} className="mr-2" />
-          Add Screenshot
-        </HexaButton>
       </div>
+      <HexaButton
+        type="button"
+        variant="outline"
+        onClick={addScreenshot}
+        className="w-full mt-2"
+        size="sm"
+      >
+        <Plus size={14} className="mr-2" />
+        Add Screenshot
+      </HexaButton>
     </div>
   );
 };

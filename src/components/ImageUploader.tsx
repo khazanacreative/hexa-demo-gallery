@@ -13,6 +13,7 @@ interface ImageUploaderProps {
   bucketName: string;
   folderPath?: string;
   className?: string;
+  compact?: boolean;
 }
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({
@@ -21,6 +22,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   bucketName,
   folderPath = '',
   className,
+  compact = false,
 }) => {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
@@ -149,20 +151,23 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   );
 
   return (
-    <div className={cn("flex flex-col items-center gap-2", className)}>
-      <div className="relative w-full aspect-video bg-gray-100 rounded-md overflow-hidden border border-gray-200">
+    <div className={cn("flex flex-col items-center gap-1", className)}>
+      <div className={cn(
+        "relative w-full bg-gray-100 rounded-md overflow-hidden border border-gray-200",
+        compact ? "aspect-[4/3]" : "aspect-video"
+      )}>
         {previewUrl && (
           <img
             src={previewUrl}
             alt="Preview"
             className="w-full h-full object-cover"
-            style={{ maxHeight: '200px' }}
+            style={{ maxHeight: compact ? '120px' : '200px' }}
           />
         )}
         
         {!previewUrl && (
           <div className="flex items-center justify-center w-full h-full text-gray-400">
-            No image selected
+            No image
           </div>
         )}
         
@@ -186,7 +191,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         )}
       </div>
       
-      <div className="flex gap-2 w-full">
+      <div className="flex gap-1 w-full">
         <label className="w-full">
           <input
             type="file"
@@ -201,10 +206,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             className="w-full"
             disabled={uploading || bucketExists === false}
             asChild
+            size={compact ? "sm" : "default"}
           >
             <span>
-              <Upload size={16} className="mr-2" />
-              {isPlaceholder ? "Upload Image" : "Change Image"}
+              <Upload size={compact ? 14 : 16} className="mr-2" />
+              {isPlaceholder ? "Upload" : "Change"}
             </span>
           </HexaButton>
         </label>

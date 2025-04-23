@@ -92,16 +92,7 @@ const ProjectForm = ({
 
   const handleSubmit = (data: ProjectFormValues) => {
     try {
-      if (!currentUser) {
-        toast({
-          title: "Akses Ditolak",
-          description: "Anda harus login terlebih dahulu.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (currentUser.role !== 'admin') {
+      if (!currentUser || currentUser.role !== 'admin') {
         toast({
           title: "Akses Ditolak",
           description: "Hanya admin yang dapat mengedit data project.",
@@ -170,7 +161,7 @@ const ProjectForm = ({
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 {/* Cover Image */}
                 <FormItem>
                   <FormLabel>Cover Image</FormLabel>
