@@ -1,6 +1,9 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { Session } from '@supabase/supabase-js';
 
 // Extended user interface with email and password
 interface AuthUser extends User {
@@ -25,6 +28,7 @@ interface AuthContextType {
   toggleRole: () => void;
   addUser: (userData: UserCreationData) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,49 +58,175 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return savedUsers ? JSON.parse(savedUsers) : initialUsers;
   });
   
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    // Check if user is logged in from localStorage
-    const savedUser = localStorage.getItem('hexa_current_user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-  
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('hexa_current_user') !== null;
-  });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { toast } = useToast();
 
   // Save users to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('hexa_users', JSON.stringify(users));
   }, [users]);
   
-  // Save current user to localStorage whenever it changes
+  // Initialize auth state from Supabase
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('hexa_current_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('hexa_current_user');
-    }
-  }, [currentUser]);
+    // First set up the auth listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        
+        if (session?.user) {
+          const { id, email } = session.user;
+          // Create a user object from the session
+          const userFromSession: AuthUser = {
+            id,
+            name: email?.split('@')[0] || 'User',
+            email: email || '',
+            role: 'user' // Default role
+          };
+          
+          setCurrentUser(userFromSession);
+          setIsAuthenticated(true);
+          
+          // In a real app, fetch additional user data here
+          setTimeout(() => {
+            // Fetch user profile from database
+            supabase.from('profiles')
+              .select('*')
+              .eq('id', id)
+              .single()
+              .then(({ data, error }) => {
+                if (!error && data) {
+                  setCurrentUser(prev => prev ? {
+                    ...prev,
+                    name: data.name,
+                    role: data.role as UserRole
+                  } : null);
+                }
+              });
+          }, 0);
+        } else {
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+    );
+    
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      
+      if (session?.user) {
+        const { id, email } = session.user;
+        // Create a user object from the session
+        const userFromSession: AuthUser = {
+          id,
+          name: email?.split('@')[0] || 'User',
+          email: email || '',
+          role: 'user' // Default role
+        };
+        
+        setCurrentUser(userFromSession);
+        setIsAuthenticated(true);
+        
+        // Fetch additional user data
+        supabase.from('profiles')
+          .select('*')
+          .eq('id', id)
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setCurrentUser(prev => prev ? {
+                ...prev,
+                name: data.name,
+                role: data.role as UserRole
+              } : null);
+            }
+          });
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simple authentication logic - in a real app, you would call an API
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-      // Create a copy of the user without the password for security
-      const { password, ...userWithoutPassword } = user;
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      return true;
+    try {
+      // Try Supabase auth first
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error('Supabase auth error:', error);
+        
+        // Fall back to mock auth for demo
+        const user = users.find(u => u.email === email && u.password === password);
+        if (user) {
+          // Create a copy of the user without the password for security
+          const { password, ...userWithoutPassword } = user;
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+          toast({
+            title: "Demo login",
+            description: "Using mock auth as fallback",
+          });
+          return true;
+        }
+        
+        toast({
+          title: "Login error",
+          description: error.message,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      if (data.session) {
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+        });
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login error",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    return false;
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('hexa_current_user');
+  const logout = async () => {
+    try {
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Also clear local state
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setSession(null);
+      localStorage.removeItem('hexa_current_user');
+      
+      toast({
+        title: "Logout successful",
+        description: "You have been logged out",
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout error",
+        description: "Failed to sign out",
+        variant: "destructive"
+      });
+    }
   };
 
   const toggleRole = () => {
@@ -116,16 +246,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addUser = async (userData: UserCreationData): Promise<void> => {
-    const newUser: AuthUser = {
-      id: Date.now().toString(), // Simple ID generation for demo
-      ...userData
-    };
-    
-    setUsers(prevUsers => [...prevUsers, newUser]);
+    try {
+      // First try to create user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('Supabase signup error:', error);
+        throw error;
+      }
+      
+      // For demo, also add to local state
+      const newUser: AuthUser = {
+        id: data.user?.id || Date.now().toString(), // Use Supabase ID or fallback
+        name: userData.name,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role
+      };
+      
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      toast({
+        title: "User added",
+        description: `${userData.name} has been added successfully`,
+      });
+    } catch (error: any) {
+      console.error('Error adding user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add user",
+        variant: "destructive"
+      });
+      throw error;
+    }
   };
 
   const removeUser = async (userId: string): Promise<void> => {
+    // Note: In a real app, you would call supabase.auth.admin.deleteUser()
+    // but this requires an admin key which shouldn't be in the frontend
+    
+    // For demo, just remove from local state
     setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+    toast({
+      title: "User removed",
+      description: "User has been removed successfully",
+    });
   };
 
   return (
@@ -137,7 +310,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logout,
       toggleRole,
       addUser,
-      removeUser
+      removeUser,
+      session
     }}>
       {children}
     </AuthContext.Provider>

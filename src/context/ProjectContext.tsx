@@ -4,6 +4,7 @@ import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
 
 interface ProjectContextType {
   projects: Project[];
@@ -27,6 +28,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -56,7 +58,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             category: item.category || '',
             tags: item.tags || [],
             features: item.features || [],
-            createdAt: item.created_at
+            createdAt: item.created_at || new Date().toISOString()
           }));
           
           console.log('Mapped projects:', fetchedProjects);

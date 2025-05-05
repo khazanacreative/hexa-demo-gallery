@@ -5,6 +5,7 @@ import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 interface ImageUploaderProps {
   currentImageUrl: string;
@@ -22,6 +23,7 @@ const ImageUploader = ({
   className = '', 
 }: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false);
+  const { isAuthenticated } = useAuth();
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -31,9 +33,14 @@ const ImageUploader = ({
         throw new Error('You must select an image to upload.');
       }
       
+      if (!isAuthenticated) {
+        throw new Error('You must be logged in to upload images.');
+      }
+      
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${folderPath}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+      const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
       const { data, error } = await supabase.storage
         .from(bucketName)
@@ -110,7 +117,8 @@ const ImageUploader = ({
           variant="outline" 
           size="icon" 
           className="flex-shrink-0"
-          disabled={uploading}
+          disabled={uploading || !isAuthenticated}
+          title={!isAuthenticated ? "Login to upload images" : "Upload image"}
         >
           {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
         </HexaButton>
@@ -119,7 +127,7 @@ const ImageUploader = ({
           accept="image/*"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           onChange={uploadImage}
-          disabled={uploading}
+          disabled={uploading || !isAuthenticated}
         />
       </div>
       
