@@ -3,6 +3,8 @@ import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
 import { UserIcon, Menu, LogOut, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HeaderProps {
   onRoleToggle: () => void;
@@ -10,8 +12,47 @@ interface HeaderProps {
 
 const Header = ({ onRoleToggle }: HeaderProps) => {
   const { currentUser, logout } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Verify admin status from the database
+    const verifyAdminStatus = async () => {
+      if (currentUser) {
+        console.log("Current user in Header:", currentUser);
+        
+        // Special case for admin@example.com
+        if (currentUser.email === 'admin@example.com') {
+          setIsAdmin(true);
+          return;
+        }
+        
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', currentUser.id)
+            .single();
+            
+          if (!error && profile) {
+            setIsAdmin(profile.role === 'admin');
+            console.log('User role from DB:', profile.role);
+          } else {
+            setIsAdmin(currentUser.role === 'admin');
+            console.log('Using local role data:', currentUser.role);
+          }
+        } catch (error) {
+          console.error('Error verifying admin status:', error);
+          // Fall back to local state
+          setIsAdmin(currentUser.role === 'admin');
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    
+    verifyAdminStatus();
+  }, [currentUser]);
 
   const handleLogout = () => {
     logout();
@@ -31,7 +72,7 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
           <div className="hidden md:flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded">
             <UserIcon size={16} />
             <span className="font-medium">
-              {currentUser?.name} ({currentUser?.role})
+              {currentUser?.name} ({isAdmin ? 'admin' : 'user'})
             </span>
           </div>
             

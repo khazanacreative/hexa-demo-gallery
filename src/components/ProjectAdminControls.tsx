@@ -3,6 +3,8 @@ import { Project } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -16,7 +18,42 @@ const ProjectAdminControls = ({
   onDelete
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    // Verify admin status from the database
+    const verifyAdminStatus = async () => {
+      if (currentUser) {
+        // Special case for admin@example.com
+        if (currentUser.email === 'admin@example.com') {
+          setIsAdmin(true);
+          return;
+        }
+        
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', currentUser.id)
+            .single();
+            
+          if (!error && profile) {
+            setIsAdmin(profile.role === 'admin');
+          } else {
+            setIsAdmin(currentUser.role === 'admin');
+          }
+        } catch (error) {
+          console.error('Error verifying admin status:', error);
+          // Fall back to local state
+          setIsAdmin(currentUser.role === 'admin');
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    
+    verifyAdminStatus();
+  }, [currentUser]);
 
   if (!isAdmin) return null;
 

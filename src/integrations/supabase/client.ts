@@ -17,3 +17,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true
   }
 });
+
+// Add debug helper that logs all auth state changes
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log("[Supabase Debug] Auth state changed:", event, session?.user?.id);
+});

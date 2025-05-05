@@ -1,20 +1,40 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Lock, AtSign, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // If user is already authenticated, redirect to home
+    if (isAuthenticated) {
+      navigate('/');
+    }
+    
+    // Check for authentication errors in URL
+    const url = new URL(window.location.href);
+    const errorDescription = url.searchParams.get('error_description');
+    if (errorDescription) {
+      setError(decodeURIComponent(errorDescription));
+      toast({
+        title: "Login Error",
+        description: decodeURIComponent(errorDescription),
+        variant: "destructive",
+      });
+    }
+  }, [isAuthenticated, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +43,32 @@ const Login = () => {
     
     try {
       console.log('Attempting login with:', email);
+      
+      // Set admin role for admin@example.com before login
+      if (email === 'admin@example.com') {
+        console.log('Admin login detected, will ensure admin role is set after login');
+      }
+      
       const success = await login(email, password);
       if (success) {
+        // Ensure auth state has been updated by checking for session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('Login successful, session established');
+          if (email === 'admin@example.com') {
+            console.log('Confirming admin role is set');
+            // Fetch profile to verify role
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
+            
+            console.log('Current user profile:', profile);
+          }
+        }
+        
         toast({
           title: "Login successful",
           description: "Welcome back!",

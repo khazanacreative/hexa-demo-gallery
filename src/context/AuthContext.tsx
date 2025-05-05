@@ -73,40 +73,83 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log('Setting up auth listener...');
     // First set up the auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         
         if (session?.user) {
           const { id, email } = session.user;
-          // Create a user object from the session
+          // Default role setting
+          let userRole: UserRole = 'user';
+          let userName = email?.split('@')[0] || 'User';
+          
+          // Special handling for admin@example.com
+          if (email === 'admin@example.com') {
+            userRole = 'admin';
+            userName = 'Admin User';
+            
+            // Ensure admin profile exists in database with correct role
+            const { data: existingProfile, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', id)
+              .single();
+            
+            if (profileError || !existingProfile) {
+              // Create admin profile if it doesn't exist
+              await supabase
+                .from('profiles')
+                .insert({
+                  id,
+                  name: userName,
+                  email: email || '',
+                  role: 'admin'
+                });
+              console.log('Created admin profile');
+            } else if (existingProfile.role !== 'admin') {
+              // Update to admin role if not already
+              await supabase
+                .from('profiles')
+                .update({ role: 'admin' })
+                .eq('id', id);
+              console.log('Updated user to admin role');
+            }
+          }
+          
+          // Create a user object from the session with default role
           const userFromSession: AuthUser = {
             id,
-            name: email?.split('@')[0] || 'User',
+            name: userName,
             email: email || '',
-            role: email === 'admin@example.com' ? 'admin' : 'user' // Set admin role for admin@example.com
+            role: userRole
           };
           
           setCurrentUser(userFromSession);
           setIsAuthenticated(true);
           
-          // Fetch user profile data
-          supabase.from('profiles')
-            .select('*')
-            .eq('id', id)
-            .single()
-            .then(({ data, error }) => {
-              if (!error && data) {
-                console.log('Profile found:', data);
+          // After setting default values, fetch actual profile data
+          setTimeout(async () => {
+            try {
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', id)
+                .single();
+              
+              if (!error && profile) {
+                console.log('Profile found:', profile);
                 setCurrentUser(prev => prev ? {
                   ...prev,
-                  name: data.name,
-                  role: data.role as UserRole
+                  name: profile.name,
+                  role: profile.role as UserRole
                 } : null);
               } else if (error) {
                 console.error('Error fetching profile:', error);
               }
-            });
+            } catch (e) {
+              console.error('Error in profile fetch:', e);
+            }
+          }, 0);
         } else {
           setCurrentUser(null);
           setIsAuthenticated(false);
@@ -115,42 +158,85 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
     
     // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       console.log('Got existing session:', session?.user?.email);
-      setSession(session);
       
       if (session?.user) {
         const { id, email } = session.user;
+        // Default role setting
+        let userRole: UserRole = 'user';
+        let userName = email?.split('@')[0] || 'User';
+        
+        // Special handling for admin@example.com
+        if (email === 'admin@example.com') {
+          userRole = 'admin';
+          userName = 'Admin User';
+          
+          // Ensure admin profile exists with correct role
+          const { data: existingProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (profileError || !existingProfile) {
+            // Create admin profile if it doesn't exist
+            await supabase
+              .from('profiles')
+              .insert({
+                id,
+                name: userName,
+                email: email || '',
+                role: 'admin'
+              });
+            console.log('Created admin profile on init');
+          } else if (existingProfile.role !== 'admin') {
+            // Update to admin role if not already
+            await supabase
+              .from('profiles')
+              .update({ role: 'admin' })
+              .eq('id', id);
+            console.log('Updated user to admin role on init');
+          }
+        }
+        
         // Create a user object from the session
         const userFromSession: AuthUser = {
           id,
-          name: email?.split('@')[0] || 'User',
+          name: userName,
           email: email || '',
-          role: email === 'admin@example.com' ? 'admin' : 'user' // Set admin role for admin@example.com
+          role: userRole
         };
         
         setCurrentUser(userFromSession);
         setIsAuthenticated(true);
         
-        // Fetch additional user data
-        supabase.from('profiles')
-          .select('*')
-          .eq('id', id)
-          .single()
-          .then(({ data, error }) => {
-            if (!error && data) {
-              console.log('Profile found on init:', data);
-              setCurrentUser(prev => prev ? {
-                ...prev,
-                name: data.name,
-                role: data.role as UserRole
-              } : null);
-            } else if (error) {
-              console.error('Error fetching profile on init:', error);
-            }
-          });
+        // After setting default values, fetch actual profile data
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (!error && profile) {
+            console.log('Profile found on init:', profile);
+            setCurrentUser(prev => prev ? {
+              ...prev,
+              name: profile.name,
+              role: profile.role as UserRole
+            } : null);
+          } else if (error) {
+            console.error('Error fetching profile on init:', error);
+          }
+        } catch (e) {
+          console.error('Error in profile fetch on init:', e);
+        }
       }
-    });
+    };
+    
+    initializeAuth();
     
     return () => {
       subscription.unsubscribe();
@@ -199,47 +285,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: "Welcome back!",
         });
 
-        // Add special handling for admin@example.com
+        // Special handling for admin@example.com
         if (email === 'admin@example.com') {
           console.log('Admin user detected, setting admin role');
           const { id } = data.user;
           
-          // Check if admin profile exists in database
-          const { data: profileData, error: profileError } = await supabase
+          // Force create/update admin profile with admin role
+          await supabase
             .from('profiles')
-            .select('*')
-            .eq('id', id)
-            .single();
+            .upsert({
+              id: id,
+              name: 'Admin User',
+              email: email,
+              role: 'admin',
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
             
-          if (profileError || !profileData) {
-            // If no profile exists, create one with admin role
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                id: id,
-                name: 'Admin User',
-                email: email,
-                role: 'admin'
-              });
-              
-            if (insertError) {
-              console.error('Error creating admin profile:', insertError);
-            } else {
-              console.log('Created admin profile');
-            }
-          } else if (profileData.role !== 'admin') {
-            // Update role to admin if it's not already
-            const { error: updateError } = await supabase
-              .from('profiles')
-              .update({ role: 'admin' })
-              .eq('id', id);
-              
-            if (updateError) {
-              console.error('Error updating admin role:', updateError);
-            } else {
-              console.log('Updated user to admin role');
-            }
-          }
+          console.log('Ensured admin profile exists with admin role');
         }
         
         return true;
