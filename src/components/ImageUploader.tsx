@@ -42,6 +42,8 @@ const ImageUploader = ({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
+      console.log(`Uploading image to ${bucketName}/${filePath}`);
+      
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
@@ -58,9 +60,13 @@ const ImageUploader = ({
         throw new Error('Upload failed - no data returned');
       }
 
+      console.log('Upload successful:', data);
+
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(data.path);
+
+      console.log('Public URL:', urlData.publicUrl);
 
       onImageUploaded({
         path: data.path,

@@ -70,9 +70,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   // Initialize auth state from Supabase
   useEffect(() => {
+    console.log('Setting up auth listener...');
     // First set up the auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         
         if (session?.user) {
@@ -82,29 +84,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id,
             name: email?.split('@')[0] || 'User',
             email: email || '',
-            role: 'user' // Default role
+            role: email === 'admin@example.com' ? 'admin' : 'user' // Set admin role for admin@example.com
           };
           
           setCurrentUser(userFromSession);
           setIsAuthenticated(true);
           
-          // In a real app, fetch additional user data here
-          setTimeout(() => {
-            // Fetch user profile from database
-            supabase.from('profiles')
-              .select('*')
-              .eq('id', id)
-              .single()
-              .then(({ data, error }) => {
-                if (!error && data) {
-                  setCurrentUser(prev => prev ? {
-                    ...prev,
-                    name: data.name,
-                    role: data.role as UserRole
-                  } : null);
-                }
-              });
-          }, 0);
+          // Fetch user profile data
+          supabase.from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single()
+            .then(({ data, error }) => {
+              if (!error && data) {
+                console.log('Profile found:', data);
+                setCurrentUser(prev => prev ? {
+                  ...prev,
+                  name: data.name,
+                  role: data.role as UserRole
+                } : null);
+              } else if (error) {
+                console.error('Error fetching profile:', error);
+              }
+            });
         } else {
           setCurrentUser(null);
           setIsAuthenticated(false);
@@ -114,6 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Got existing session:', session?.user?.email);
       setSession(session);
       
       if (session?.user) {
@@ -123,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id,
           name: email?.split('@')[0] || 'User',
           email: email || '',
-          role: 'user' // Default role
+          role: email === 'admin@example.com' ? 'admin' : 'user' // Set admin role for admin@example.com
         };
         
         setCurrentUser(userFromSession);
@@ -136,11 +139,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .single()
           .then(({ data, error }) => {
             if (!error && data) {
+              console.log('Profile found on init:', data);
               setCurrentUser(prev => prev ? {
                 ...prev,
                 name: data.name,
                 role: data.role as UserRole
               } : null);
+            } else if (error) {
+              console.error('Error fetching profile on init:', error);
             }
           });
       }
@@ -153,6 +159,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('Attempting login with:', email);
       // Try Supabase auth first
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -165,6 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Fall back to mock auth for demo
         const user = users.find(u => u.email === email && u.password === password);
         if (user) {
+          console.log('Mock auth successful for:', email);
           // Create a copy of the user without the password for security
           const { password, ...userWithoutPassword } = user;
           setCurrentUser(user);
@@ -185,10 +193,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data.session) {
+        console.log('Supabase login successful for:', email);
         toast({
           title: "Login successful",
           description: "Welcome back!",
         });
+
+        // Add special handling for admin@example.com
+        if (email === 'admin@example.com') {
+          console.log('Admin user detected, setting admin role');
+          const { id } = data.user;
+          
+          // Check if admin profile exists in database
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single();
+            
+          if (profileError || !profileData) {
+            // If no profile exists, create one with admin role
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: id,
+                name: 'Admin User',
+                email: email,
+                role: 'admin'
+              });
+              
+            if (insertError) {
+              console.error('Error creating admin profile:', insertError);
+            } else {
+              console.log('Created admin profile');
+            }
+          } else if (profileData.role !== 'admin') {
+            // Update role to admin if it's not already
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ role: 'admin' })
+              .eq('id', id);
+              
+            if (updateError) {
+              console.error('Error updating admin role:', updateError);
+            } else {
+              console.log('Updated user to admin role');
+            }
+          }
+        }
+        
         return true;
       }
       
@@ -243,6 +296,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user.id === currentUser.id ? updatedUser : user
       )
     );
+    
+    // If we have a real user in Supabase, update their profile as well
+    if (session?.user) {
+      supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', currentUser.id)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error updating role in Supabase:', error);
+          } else {
+            console.log('Updated role in Supabase to:', newRole);
+          }
+        });
+    }
   };
 
   const addUser = async (userData: UserCreationData): Promise<void> => {

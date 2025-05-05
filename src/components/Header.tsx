@@ -1,7 +1,7 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
-import { UserIcon, Menu, Search, LogOut, Users } from 'lucide-react';
+import { UserIcon, Menu, LogOut, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
@@ -23,11 +23,17 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <h1 className="text-2xl font-bold">Hexa Integra Mandiri</h1>
+            <h1 className="text-2xl font-bold">Galeri Hexa</h1>
           </Link>
         </div>
                        
         <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded">
+            <UserIcon size={16} />
+            <span className="font-medium">
+              {currentUser?.name} ({currentUser?.role})
+            </span>
+          </div>
             
           {isAdmin && (
             <Link to="/users">
@@ -41,8 +47,6 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
             </Link>
           )}
           
-          {/* Tombol Admin/User Mode dihapus */}
-
           <HexaButton 
             variant="ghost" 
             className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 ml-2"

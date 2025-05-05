@@ -5,12 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Lock, AtSign } from 'lucide-react';
+import { Lock, AtSign, AlertCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -18,8 +19,10 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     
     try {
+      console.log('Attempting login with:', email);
       const success = await login(email, password);
       if (success) {
         toast({
@@ -28,19 +31,21 @@ const Login = () => {
         });
         navigate('/');
       } else {
+        setError("Invalid email or password");
         toast({
           title: "Login failed",
           description: "Invalid email or password",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error.message || "An error occurred during login");
       toast({
         title: "Login error",
-        description: "An error occurred during login",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +62,13 @@ const Login = () => {
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="bg-red-50 text-red-700 p-3 rounded-md flex items-center gap-2">
+              <AlertCircle size={18} />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+          
           <div className="space-y-4">
             <div className="relative">
               <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -93,7 +105,7 @@ const Login = () => {
           
           <div className="text-center text-sm text-gray-500 mt-4">
             <p>Demo credentials:</p>
-            <p>Admin: admin@example.com / password</p>
+            <p className="font-semibold">Admin: admin@example.com / password</p>
             <p>User: user@example.com / password</p>
           </div>
         </form>
