@@ -16,38 +16,44 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verify admin status from the database
+    // Verify admin status using both database and local state
     const verifyAdminStatus = async () => {
-      if (currentUser) {
-        console.log("Current user in Header:", currentUser);
-        
-        // Special case for admin@example.com
-        if (currentUser.email === 'admin@example.com') {
-          setIsAdmin(true);
-          return;
-        }
-        
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', currentUser.id)
-            .single();
-            
-          if (!error && profile) {
-            setIsAdmin(profile.role === 'admin');
-            console.log('User role from DB:', profile.role);
-          } else {
-            setIsAdmin(currentUser.role === 'admin');
-            console.log('Using local role data:', currentUser.role);
-          }
-        } catch (error) {
-          console.error('Error verifying admin status:', error);
-          // Fall back to local state
-          setIsAdmin(currentUser.role === 'admin');
-        }
-      } else {
+      if (!currentUser) {
         setIsAdmin(false);
+        return;
+      }
+      
+      console.log("Current user in Header:", currentUser);
+      
+      // Hardcoded admin check for admin@example.com
+      if (currentUser.email === 'admin@example.com') {
+        console.log("Admin email detected in Header, granting admin privileges");
+        setIsAdmin(true);
+        return;
+      }
+      
+      // Check from local state first for quick UI response
+      if (currentUser.role === 'admin') {
+        setIsAdmin(true);
+      }
+      
+      // Double-check with database for confirmation
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+          
+        if (error) {
+          console.error('Error verifying admin status in Header:', error);
+          // If database error, rely on local state
+        } else if (profile) {
+          console.log('User role from DB in Header:', profile.role);
+          setIsAdmin(profile.role === 'admin');
+        }
+      } catch (error) {
+        console.error('Error in admin verification in Header:', error);
       }
     };
     

@@ -44,28 +44,49 @@ const Login = () => {
     try {
       console.log('Attempting login with:', email);
       
-      // Set admin role for admin@example.com before login
-      if (email === 'admin@example.com') {
-        console.log('Admin login detected, will ensure admin role is set after login');
+      // Special handling for admin@example.com
+      const isAdminLogin = email.toLowerCase() === 'admin@example.com';
+      if (isAdminLogin) {
+        console.log('Admin login detected, ensuring admin role will be set');
       }
       
       const success = await login(email, password);
       if (success) {
-        // Ensure auth state has been updated by checking for session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          console.log('Login successful, session established');
-          if (email === 'admin@example.com') {
-            console.log('Confirming admin role is set');
-            // Fetch profile to verify role
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single();
+        // For admin login, verify the role is set correctly
+        if (isAdminLogin) {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.log('Admin login successful, confirming admin role');
             
-            console.log('Current user profile:', profile);
+            // Verify profile has admin role
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (profile) {
+                console.log('Admin profile role:', profile.role);
+                
+                // Update profile to admin role if not already
+                if (profile.role !== 'admin') {
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ role: 'admin' })
+                    .eq('id', session.user.id);
+                    
+                  if (error) {
+                    console.error('Failed to update admin role:', error);
+                  } else {
+                    console.log('Updated to admin role successfully');
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error verifying admin role:', error);
+            }
           }
         }
         

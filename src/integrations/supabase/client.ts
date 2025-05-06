@@ -18,7 +18,31 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Add debug helper that logs all auth state changes
+// Add debug helper that logs all auth state changes with more detailed information
 supabase.auth.onAuthStateChange((event, session) => {
-  console.log("[Supabase Debug] Auth state changed:", event, session?.user?.id);
+  console.log("[Supabase Debug] Auth state changed:", event);
+  if (session?.user) {
+    console.log("[Supabase Debug] User ID:", session.user.id);
+    console.log("[Supabase Debug] User email:", session.user.email);
+    console.log("[Supabase Debug] User metadata:", session.user.user_metadata);
+  } else {
+    console.log("[Supabase Debug] No active session");
+  }
 });
+
+// Additional debug function to check profile data
+export const checkProfileData = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+    
+  if (error) {
+    console.error("[Profile Debug] Error fetching profile:", error);
+    return null;
+  }
+  
+  console.log("[Profile Debug] Profile data:", data);
+  return data;
+};
