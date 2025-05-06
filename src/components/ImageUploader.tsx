@@ -4,7 +4,7 @@ import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, uploadFile, deleteFile } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
 interface ImageUploaderProps {
@@ -23,11 +23,13 @@ const ImageUploader = ({
   className = '', 
 }: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { isAuthenticated } = useAuth();
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
+      setUploadProgress(0);
       
       if (!event.target.files || event.target.files.length === 0) {
         throw new Error('You must select an image to upload.');
@@ -44,33 +46,21 @@ const ImageUploader = ({
       
       console.log(`Uploading image to ${bucketName}/${filePath}`);
       
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      // Use the enhanced uploadFile helper
+      const result = await uploadFile(
+        bucketName, 
+        filePath, 
+        file, 
+        (progress) => setUploadProgress(progress)
+      );
 
-      if (error) {
-        console.error('Error uploading:', error.message);
-        throw error;
+      if (!result) {
+        throw new Error('Upload failed - no result returned');
       }
-
-      if (!data) {
-        throw new Error('Upload failed - no data returned');
-      }
-
-      console.log('Upload successful:', data);
-
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(data.path);
-
-      console.log('Public URL:', urlData.publicUrl);
 
       onImageUploaded({
-        path: data.path,
-        url: urlData.publicUrl
+        path: result.path,
+        url: result.url
       });
 
       toast({
@@ -87,10 +77,32 @@ const ImageUploader = ({
       });
     } finally {
       setUploading(false);
+      setUploadProgress(0);
       if (event.target) {
         event.target.value = '';
       }
     }
+  };
+
+  const handleDeleteCurrentImage = async () => {
+    // If the current image is from Supabase storage, extract the path and delete it
+    if (currentImageUrl && currentImageUrl.includes('project-images') && !currentImageUrl.startsWith('/')) {
+      try {
+        // Extract the path from the URL
+        const urlParts = currentImageUrl.split('project-images/');
+        if (urlParts.length > 1) {
+          const path = urlParts[1];
+          await deleteFile(bucketName, path);
+          console.log("File deleted from storage:", path);
+        }
+      } catch (error) {
+        console.error("Failed to delete file from storage:", error);
+        // Continue with clearing the image URL even if deletion fails
+      }
+    }
+    
+    // Clear the image URL regardless of storage deletion success
+    onImageUploaded({ path: '', url: '' });
   };
   
   return (
@@ -126,7 +138,18 @@ const ImageUploader = ({
           disabled={uploading || !isAuthenticated}
           title={!isAuthenticated ? "Login to upload images" : "Upload image"}
         >
-          {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
+          {uploading ? (
+            <div className="relative">
+              <Loader2 size={16} className="animate-spin" />
+              {uploadProgress > 0 && (
+                <span className="absolute -bottom-5 -left-2 text-xs w-10 text-center">
+                  {uploadProgress}%
+                </span>
+              )}
+            </div>
+          ) : (
+            <Image size={16} />
+          )}
         </HexaButton>
         <input 
           type="file"
@@ -143,7 +166,7 @@ const ImageUploader = ({
           variant="outline"
           size="icon"
           className="flex-shrink-0"
-          onClick={() => onImageUploaded({ path: '', url: '' })}
+          onClick={handleDeleteCurrentImage}
         >
           <X size={16} />
         </HexaButton>

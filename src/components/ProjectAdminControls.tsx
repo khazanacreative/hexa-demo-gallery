@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, checkProfileData } from '@/integrations/supabase/client';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -48,7 +48,7 @@ const ProjectAdminControls = ({
           .from('profiles')
           .select('role')
           .eq('id', currentUser.id)
-          .single();
+          .maybeSingle();
           
         if (error) {
           console.error('Error verifying admin status:', error);
@@ -56,6 +56,8 @@ const ProjectAdminControls = ({
         } else if (profile) {
           console.log("Profile role from database:", profile.role);
           setIsAdmin(profile.role === 'admin');
+        } else {
+          console.log("No profile found, relying on local state");
         }
       } catch (error) {
         console.error('Error in admin verification:', error);
