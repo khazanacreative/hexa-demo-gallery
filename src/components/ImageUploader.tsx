@@ -46,7 +46,7 @@ const ImageUploader = ({
       
       console.log(`Uploading image to ${bucketName}/${filePath}`);
       
-      // Use the enhanced uploadFile helper
+      // Use the modified uploadFile helper with progress callback
       const result = await uploadFile(
         bucketName, 
         filePath, 

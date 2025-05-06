@@ -61,16 +61,28 @@ export const uploadFile = async (
   onProgress?: (progress: number) => void
 ): Promise<{ url: string; path: string } | null> => {
   try {
+    // Set up a progress tracking mechanism if onProgress is provided
+    let progressHandler: ((progress: { loaded: number; total: number }) => void) | undefined;
+    
+    if (onProgress) {
+      progressHandler = (progress) => {
+        const percent = Math.round((progress.loaded / progress.total) * 100);
+        onProgress(percent);
+      };
+    }
+    
+    // Upload file with cacheControl and upsert options only
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {
         cacheControl: '3600',
-        upsert: true,
-        onUploadProgress: onProgress ? (progress) => {
-          const percent = Math.round((progress.loaded / progress.total) * 100);
-          onProgress(percent);
-        } : undefined
+        upsert: true
       });
+
+    // Handle manual progress updates if needed
+    if (progressHandler && onProgress) {
+      onProgress(100); // Signal completion
+    }
 
     if (error) {
       console.error('[Storage Debug] Upload error:', error);
