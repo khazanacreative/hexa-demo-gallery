@@ -61,17 +61,22 @@ export const uploadFile = async (
   onProgress?: (progress: number) => void
 ): Promise<{ url: string; path: string } | null> => {
   try {
-    // Set up a progress tracking mechanism if onProgress is provided
-    let progressHandler: ((progress: { loaded: number; total: number }) => void) | undefined;
+    // Check if the user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('[Storage Debug] User is not authenticated');
+      throw new Error('User is not authenticated');
+    }
+
+    console.log('[Storage Debug] Starting upload to bucket:', bucket, 'path:', path);
     
+    // Simple progress tracking - we'll use a manual approach since onUploadProgress is not available
     if (onProgress) {
-      progressHandler = (progress) => {
-        const percent = Math.round((progress.loaded / progress.total) * 100);
-        onProgress(percent);
-      };
+      // Start progress indicator
+      onProgress(10);
     }
     
-    // Upload file with cacheControl and upsert options only
+    // Upload file with cacheControl and upsert options
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {
@@ -79,9 +84,9 @@ export const uploadFile = async (
         upsert: true
       });
 
-    // Handle manual progress updates if needed
-    if (progressHandler && onProgress) {
-      onProgress(100); // Signal completion
+    // Update progress to simulate completion
+    if (onProgress) {
+      onProgress(100);
     }
 
     if (error) {
@@ -106,6 +111,15 @@ export const uploadFile = async (
 // Helper function to delete a file from storage
 export const deleteFile = async (bucket: string, path: string): Promise<boolean> => {
   try {
+    // Check if the user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error('[Storage Debug] User is not authenticated for deletion');
+      throw new Error('User is not authenticated');
+    }
+
+    console.log('[Storage Debug] Attempting to delete file from bucket:', bucket, 'path:', path);
+    
     const { error } = await supabase.storage
       .from(bucket)
       .remove([path]);
@@ -142,57 +156,152 @@ export const projectOperations = {
   
   // Add a new project
   addProject: async (projectData: any, userId: string) => {
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        ...projectData,
-        user_id: userId
-      })
-      .select()
-      .single();
+    try {
+      console.log('[Project Debug] Adding project with user ID:', userId);
       
-    if (error) {
-      console.error('[Project Debug] Error adding project:', error);
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          ...projectData,
+          user_id: userId
+        })
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('[Project Debug] Error adding project:', error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('[Project Debug] Exception in addProject:', error);
       throw error;
     }
-    
-    return data;
   },
   
   // Update an existing project
   updateProject: async (projectId: string, projectData: any, userId: string) => {
-    const { data, error } = await supabase
-      .from('projects')
-      .update({
-        ...projectData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', projectId)
-      .eq('user_id', userId)
-      .select()
-      .single();
+    try {
+      console.log('[Project Debug] Updating project with ID:', projectId, 'User ID:', userId);
       
-    if (error) {
-      console.error('[Project Debug] Error updating project:', error);
+      const { data, error } = await supabase
+        .from('projects')
+        .update({
+          ...projectData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projectId)
+        .select()
+        .single();
+        
+      if (error) {
+        console.error('[Project Debug] Error updating project:', error);
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('[Project Debug] Exception in updateProject:', error);
       throw error;
     }
-    
-    return data;
   },
   
   // Delete a project
   deleteProject: async (projectId: string, userId: string) => {
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', projectId)
-      .eq('user_id', userId);
+    try {
+      console.log('[Project Debug] Deleting project with ID:', projectId, 'User ID:', userId);
       
-    if (error) {
-      console.error('[Project Debug] Error deleting project:', error);
+      // First, get the project to access its images
+      const { data: project, error: fetchError } = await supabase
+        .from('projects')
+        .select('cover_image, screenshots')
+        .eq('id', projectId)
+        .single();
+      
+      if (fetchError) {
+        console.error('[Project Debug] Error fetching project for deletion:', fetchError);
+      } else if (project) {
+        // Delete cover image if it exists and is from Supabase
+        if (project.cover_image && project.cover_image.includes('project-images')) {
+          const coverPath = project.cover_image.split('/project-images/')[1];
+          if (coverPath) {
+            await deleteFile('project-images', coverPath).catch(err => 
+              console.error('[Project Debug] Error deleting cover image:', err)
+            );
+          }
+        }
+        
+        // Delete all screenshots if they exist and are from Supabase
+        if (project.screenshots && project.screenshots.length > 0) {
+          for (const screenshot of project.screenshots) {
+            if (screenshot && screenshot.includes('project-images')) {
+              const screenshotPath = screenshot.split('/project-images/')[1];
+              if (screenshotPath) {
+                await deleteFile('project-images', screenshotPath).catch(err => 
+                  console.error('[Project Debug] Error deleting screenshot:', err)
+                );
+              }
+            }
+          }
+        }
+      }
+      
+      // Now delete the project
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+        
+      if (error) {
+        console.error('[Project Debug] Error deleting project from database:', error);
+        throw error;
+      }
+      
+      console.log('[Project Debug] Project deleted successfully:', projectId);
+      return true;
+    } catch (error) {
+      console.error('[Project Debug] Exception in deleteProject:', error);
       throw error;
     }
-    
-    return true;
   }
 };
+
+// Check if the storage buckets exist, create them if they don't
+export const ensureStorageBuckets = async () => {
+  try {
+    console.log('[Storage Debug] Checking for required storage buckets');
+    
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    
+    if (error) {
+      console.error('[Storage Debug] Error listing buckets:', error);
+      return;
+    }
+    
+    const requiredBuckets = ['project-images'];
+    const existingBuckets = buckets.map(b => b.name);
+    
+    for (const bucket of requiredBuckets) {
+      if (!existingBuckets.includes(bucket)) {
+        console.log(`[Storage Debug] Creating bucket: ${bucket}`);
+        const { error: createError } = await supabase.storage.createBucket(bucket, {
+          public: true
+        });
+        
+        if (createError) {
+          console.error(`[Storage Debug] Error creating bucket ${bucket}:`, createError);
+        } else {
+          console.log(`[Storage Debug] Bucket ${bucket} created successfully`);
+        }
+      } else {
+        console.log(`[Storage Debug] Bucket ${bucket} already exists`);
+      }
+    }
+  } catch (error) {
+    console.error('[Storage Debug] Exception in ensureStorageBuckets:', error);
+  }
+};
+
+// Initialize storage buckets when the client is imported
+ensureStorageBuckets();

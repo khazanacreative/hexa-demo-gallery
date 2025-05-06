@@ -1,9 +1,8 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
-import { supabase, projectOperations } from '@/integrations/supabase/client';
+import { supabase, projectOperations, ensureStorageBuckets } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 interface ProjectContextType {
@@ -30,6 +29,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { currentUser, isAuthenticated } = useAuth();
+
+  // Ensure storage buckets exist when context is initialized
+  useEffect(() => {
+    ensureStorageBuckets();
+  }, []);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -300,32 +304,50 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       
       console.log('Deleting project with ID:', id);
       
-      // Try to delete using helper
-      try {
-        await projectOperations.deleteProject(id, currentUser.id);
-      } catch (error) {
-        console.error('Error using projectOperations for delete:', error);
-        
-        // Fallback to direct query
-        const { error: deleteError } = await supabase
-          .from('projects')
-          .delete()
-          .eq('id', id)
-          .eq('user_id', currentUser.id);
-        
-        if (deleteError) throw deleteError;
-      }
-      
-      // Update local state
+      // Immediately update UI state to avoid lag
       setProjects(prev => prev.filter(p => p.id !== id));
       
-      toast({
-        title: "Project berhasil dihapus",
-        description: `${projectToDelete?.title || "Project"} telah dihapus dari database.`,
-        variant: "destructive",
-      });
-      
-      return true;
+      try {
+        // Try to delete using projectOperations
+        await projectOperations.deleteProject(id, currentUser.id);
+        
+        toast({
+          title: "Project berhasil dihapus",
+          description: `${projectToDelete?.title || "Project"} telah dihapus dari database.`,
+          variant: "destructive",
+        });
+        
+        return true;
+      } catch (error: any) {
+        console.error('Error using projectOperations for delete:', error);
+        
+        // If there was an error, try a direct delete
+        try {
+          const { error: deleteError } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', id);
+          
+          if (deleteError) {
+            console.error('Direct delete also failed:', deleteError);
+            // Revert local state change
+            setProjects(prev => [projectToDelete, ...prev.filter(p => p.id !== id)]);
+            throw deleteError;
+          }
+          
+          toast({
+            title: "Project berhasil dihapus",
+            description: `${projectToDelete?.title || "Project"} telah dihapus dari database.`,
+            variant: "destructive",
+          });
+          
+          return true;
+        } catch (finalError) {
+          // Revert local state change if all attempts fail
+          setProjects(prev => [projectToDelete, ...prev.filter(p => p.id !== id)]);
+          throw finalError;
+        }
+      }
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({

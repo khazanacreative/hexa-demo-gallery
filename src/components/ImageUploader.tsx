@@ -1,10 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
-import { supabase, uploadFile, deleteFile } from '@/integrations/supabase/client';
+import { supabase, uploadFile, deleteFile, ensureStorageBuckets } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
 interface ImageUploaderProps {
@@ -24,7 +24,12 @@ const ImageUploader = ({
 }: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentUser } = useAuth();
+  
+  // Ensure storage buckets exist on component mount
+  useEffect(() => {
+    ensureStorageBuckets();
+  }, []);
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -35,7 +40,7 @@ const ImageUploader = ({
         throw new Error('You must select an image to upload.');
       }
       
-      if (!isAuthenticated) {
+      if (!isAuthenticated || !currentUser) {
         throw new Error('You must be logged in to upload images.');
       }
       
@@ -44,7 +49,7 @@ const ImageUploader = ({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
-      console.log(`Uploading image to ${bucketName}/${filePath}`);
+      console.log(`Uploading image to ${bucketName}/${filePath} as user ${currentUser.id}`);
       
       // Use the modified uploadFile helper with progress callback
       const result = await uploadFile(
@@ -69,7 +74,7 @@ const ImageUploader = ({
       });
 
     } catch (error: any) {
-      console.error('Error:', error);
+      console.error('Error uploading image:', error);
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : "Failed to upload image",
@@ -92,6 +97,7 @@ const ImageUploader = ({
         const urlParts = currentImageUrl.split('project-images/');
         if (urlParts.length > 1) {
           const path = urlParts[1];
+          console.log(`Attempting to delete file from ${bucketName}/${path}`);
           await deleteFile(bucketName, path);
           console.log("File deleted from storage:", path);
         }
@@ -113,6 +119,10 @@ const ImageUploader = ({
             src={currentImageUrl} 
             alt="Preview" 
             className="w-full h-full object-cover"
+            onError={(e) => {
+              console.error('Image failed to load:', currentImageUrl);
+              (e.target as HTMLImageElement).src = '/placeholder.svg';
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
