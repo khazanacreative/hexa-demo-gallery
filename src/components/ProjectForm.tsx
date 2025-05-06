@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HexaButton } from '@/components/ui/hexa-button';
-import { X, Plus, Link } from 'lucide-react';
+import { X, Plus, Link, Loader2 } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
@@ -19,6 +20,7 @@ interface ProjectFormProps {
   onSubmit: (data: ProjectFormValues) => void;
   defaultValues?: Project;
   title: string;
+  isSubmitting?: boolean;
 }
 
 const ProjectForm = ({
@@ -26,7 +28,8 @@ const ProjectForm = ({
   onClose,
   onSubmit,
   defaultValues,
-  title
+  title,
+  isSubmitting = false
 }: ProjectFormProps) => {
   const [screenshots, setScreenshots] = useState<string[]>(
     defaultValues?.screenshots || ['/placeholder.svg']
@@ -110,7 +113,6 @@ const ProjectForm = ({
       tags: selectedTags,
       features,
     });
-    onClose();
   };
 
   return (
@@ -178,7 +180,14 @@ const ProjectForm = ({
                       <FormControl>
                         <div className="flex gap-2">
                           <Input placeholder="https://" {...field} />
-                          <HexaButton type="button" variant="outline" size="icon" className="flex-shrink-0">
+                          <HexaButton 
+                            type="button" 
+                            variant="outline" 
+                            size="icon" 
+                            className="flex-shrink-0"
+                            onClick={() => window.open(field.value, '_blank')}
+                            disabled={!field.value || field.value === 'https://example.com'}
+                          >
                             <Link size={16} />
                           </HexaButton>
                         </div>
@@ -343,11 +352,18 @@ const ProjectForm = ({
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <HexaButton type="button" variant="outline" onClick={onClose}>
+                <HexaButton type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                   Cancel
                 </HexaButton>
-                <HexaButton type="submit" variant="hexa">
-                  {defaultValues ? 'Update Project' : 'Add Project'}
+                <HexaButton type="submit" variant="hexa" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                      {defaultValues ? 'Updating...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>{defaultValues ? 'Update Project' : 'Add Project'}</>
+                  )}
                 </HexaButton>
               </div>
             </form>

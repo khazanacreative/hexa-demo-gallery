@@ -122,3 +122,77 @@ export const deleteFile = async (bucket: string, path: string): Promise<boolean>
     return false;
   }
 };
+
+// Project-specific database operations
+export const projectOperations = {
+  // Fetch all projects
+  fetchProjects: async () => {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('[Project Debug] Error fetching projects:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+  
+  // Add a new project
+  addProject: async (projectData: any, userId: string) => {
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        ...projectData,
+        user_id: userId
+      })
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('[Project Debug] Error adding project:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+  
+  // Update an existing project
+  updateProject: async (projectId: string, projectData: any, userId: string) => {
+    const { data, error } = await supabase
+      .from('projects')
+      .update({
+        ...projectData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', projectId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('[Project Debug] Error updating project:', error);
+      throw error;
+    }
+    
+    return data;
+  },
+  
+  // Delete a project
+  deleteProject: async (projectId: string, userId: string) => {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId)
+      .eq('user_id', userId);
+      
+    if (error) {
+      console.error('[Project Debug] Error deleting project:', error);
+      throw error;
+    }
+    
+    return true;
+  }
+};

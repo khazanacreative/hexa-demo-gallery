@@ -1,13 +1,14 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { HexaButton } from '@/components/ui/hexa-button';
-import { Project } from '@/types';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Project } from "@/types";
+import { Loader2 } from "lucide-react";
 
 interface DeleteConfirmationDialogProps {
   project: Project | null;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  isSubmitting?: boolean;
 }
 
 const DeleteConfirmationDialog = ({
@@ -15,35 +16,41 @@ const DeleteConfirmationDialog = ({
   isOpen,
   onClose,
   onConfirm,
+  isSubmitting = false
 }: DeleteConfirmationDialogProps) => {
   if (!project) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="text-destructive">Delete Project</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete "{project.title}"? This action cannot be undone.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex justify-end gap-2 pt-4">
-          <HexaButton variant="outline" onClick={onClose}>
-            Cancel
-          </HexaButton>
-          <HexaButton 
-            variant="destructive" 
-            onClick={() => {
+    <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Delete Project</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete <strong>{project.title}</strong>? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
               onConfirm();
-              onClose();
             }}
+            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            disabled={isSubmitting}
           >
-            Delete
-          </HexaButton>
-        </div>
-      </DialogContent>
-    </Dialog>
+            {isSubmitting ? (
+              <>
+                <Loader2 size={16} className="mr-2 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 

@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, projectOperations } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 interface ProjectContextType {
@@ -12,12 +12,13 @@ interface ProjectContextType {
   searchQuery: string;
   selectedCategory: string | null;
   selectedTags: string[];
-  addProject: (project: Omit<Project, 'id' | 'createdAt'> | Project) => void;
-  updateProject: (project: Project) => void;
-  deleteProject: (id: string) => void;
+  addProject: (project: Omit<Project, 'id' | 'createdAt'> | Project) => Promise<Project | null>;
+  updateProject: (project: Project) => Promise<Project | null>;
+  deleteProject: (id: string) => Promise<boolean>;
   setSearchQuery: (query: string) => void;
   setSelectedCategory: (category: string | null) => void;
   toggleTagSelection: (tag: string) => void;
+  isLoading: boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -28,21 +29,32 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setIsLoading(true);
         console.log('Fetching projects from database...');
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
         
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
+        let data;
+        try {
+          data = await projectOperations.fetchProjects();
+        } catch (error) {
+          console.error('Error using projectOperations:', error);
+          
+          // Fallback to direct query
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('projects')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (fallbackError) {
+            console.error('Supabase fallback error:', fallbackError);
+            throw fallbackError;
+          }
+          
+          data = fallbackData;
         }
         
         console.log('Fetched projects:', data);
@@ -96,45 +108,234 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     fetchProjects();
   }, []);
 
-  const addProject = useCallback((projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
-    if ('id' in projectData && 'createdAt' in projectData) {
-      setProjects(prev => [projectData as Project, ...prev]);
-      return;
+  const addProject = useCallback(async (projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
+    try {
+      if (!currentUser) {
+        toast({
+          title: "Error",
+          description: "User not authenticated. Please login.",
+          variant: "destructive"
+        });
+        return null;
+      }
+      
+      // If project already has id and createdAt (like when importing), use it directly
+      if ('id' in projectData && 'createdAt' in projectData) {
+        setProjects(prev => [projectData as Project, ...prev]);
+        toast({
+          title: "Project added",
+          description: `${projectData.title} has been added successfully.`,
+        });
+        return projectData as Project;
+      }
+      
+      // Prepare data for backend
+      const projectDataForBackend = {
+        title: projectData.title,
+        description: projectData.description || '',
+        cover_image: projectData.coverImage,
+        screenshots: projectData.screenshots,
+        demo_url: projectData.demoUrl,
+        category: projectData.category,
+        tags: projectData.tags,
+        features: projectData.features || []
+      };
+      
+      // Try to add using helper
+      let newProjectFromDB;
+      try {
+        newProjectFromDB = await projectOperations.addProject(projectDataForBackend, currentUser.id);
+      } catch (error) {
+        console.error('Error using projectOperations for add:', error);
+        
+        // Fallback to direct query
+        const { data, error: insertError } = await supabase
+          .from('projects')
+          .insert({
+            ...projectDataForBackend,
+            user_id: currentUser.id
+          })
+          .select()
+          .single();
+        
+        if (insertError) throw insertError;
+        newProjectFromDB = data;
+      }
+      
+      // Transform to frontend model
+      const newProject: Project = {
+        id: newProjectFromDB.id,
+        title: newProjectFromDB.title,
+        description: newProjectFromDB.description || '',
+        coverImage: newProjectFromDB.cover_image || '',
+        screenshots: newProjectFromDB.screenshots || [],
+        demoUrl: newProjectFromDB.demo_url || '',
+        category: newProjectFromDB.category || '',
+        tags: newProjectFromDB.tags || [],
+        features: newProjectFromDB.features || [],
+        createdAt: newProjectFromDB.created_at || new Date().toISOString()
+      };
+
+      setProjects(prev => [newProject, ...prev]);
+      toast({
+        title: "Project berhasil ditambahkan",
+        description: `${newProject.title} telah berhasil disimpan ke database.`,
+      });
+      
+      return newProject;
+    } catch (error) {
+      console.error('Error adding project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan project ke database. Silakan coba lagi.",
+        variant: "destructive"
+      });
+      return null;
     }
-    
-    const newProject: Project = {
-      ...projectData as Omit<Project, 'id' | 'createdAt'>,
-      id: crypto.randomUUID(), // Generate proper UUID
-      createdAt: new Date().toISOString(),
-      features: (projectData as Omit<Project, 'id' | 'createdAt'>).features || []
-    };
-    
-    setProjects(prev => [newProject, ...prev]);
-    toast({
-      title: "Project added",
-      description: `${newProject.title} has been added successfully.`,
-    });
-  }, []);
+  }, [currentUser]);
 
-  const updateProject = useCallback((updatedProject: Project) => {
-    setProjects(prev => 
-      prev.map(p => p.id === updatedProject.id ? updatedProject : p)
-    );
-    toast({
-      title: "Project updated",
-      description: `${updatedProject.title} has been updated successfully.`,
-    });
-  }, []);
+  const updateProject = useCallback(async (updatedProject: Project) => {
+    try {
+      if(!currentUser) {
+        toast({
+          title: "Error",
+          description: "User not authenticated. Please login.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      if(!updatedProject.id) {
+        toast({
+          title: "Error",
+          description: "Project id is missing.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      console.log('Updating project with ID:', updatedProject.id);
+      
+      // Prepare data for backend
+      const projectDataForBackend = {
+        title: updatedProject.title,
+        description: updatedProject.description || '',
+        cover_image: updatedProject.coverImage,
+        screenshots: updatedProject.screenshots,
+        demo_url: updatedProject.demoUrl,
+        category: updatedProject.category,
+        tags: updatedProject.tags,
+        features: updatedProject.features
+      };
+      
+      // Try to update using helper
+      let updatedProjectFromDB;
+      try {
+        updatedProjectFromDB = await projectOperations.updateProject(
+          updatedProject.id, 
+          projectDataForBackend, 
+          currentUser.id
+        );
+      } catch (error) {
+        console.error('Error using projectOperations for update:', error);
+        
+        // Fallback to direct query
+        const { data, error: updateError } = await supabase
+          .from('projects')
+          .update({
+            ...projectDataForBackend,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', updatedProject.id)
+          .eq('user_id', currentUser.id)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        updatedProjectFromDB = data;
+      }
+      
+      // Update local state
+      setProjects(prev => 
+        prev.map(p => p.id === updatedProject.id ? updatedProject : p)
+      );
+      
+      toast({
+        title: "Project berhasil diperbarui",
+        description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
+      });
+      
+      return updatedProject;
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memperbarui project di database. Silakan coba lagi.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  }, [currentUser]);
 
-  const deleteProject = useCallback((id: string) => {
-    const projectToDelete = projects.find(p => p.id === id);
-    setProjects(prev => prev.filter(p => p.id !== id));
-    toast({
-      title: "Project deleted",
-      description: `${projectToDelete?.title || "Project"} has been deleted.`,
-      variant: "destructive",
-    });
-  }, [projects]);
+  const deleteProject = useCallback(async (id: string) => {
+    try {
+      if(!currentUser) {
+        toast({
+          title: "Error",
+          description: "User not authenticated. Please login.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      const projectToDelete = projects.find(p => p.id === id);
+      if (!projectToDelete) {
+        toast({
+          title: "Error",
+          description: "Project not found.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      console.log('Deleting project with ID:', id);
+      
+      // Try to delete using helper
+      try {
+        await projectOperations.deleteProject(id, currentUser.id);
+      } catch (error) {
+        console.error('Error using projectOperations for delete:', error);
+        
+        // Fallback to direct query
+        const { error: deleteError } = await supabase
+          .from('projects')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', currentUser.id);
+        
+        if (deleteError) throw deleteError;
+      }
+      
+      // Update local state
+      setProjects(prev => prev.filter(p => p.id !== id));
+      
+      toast({
+        title: "Project berhasil dihapus",
+        description: `${projectToDelete?.title || "Project"} telah dihapus dari database.`,
+        variant: "destructive",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus project dari database. Silakan coba lagi.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  }, [currentUser, projects]);
 
   const toggleTagSelection = useCallback((tag: string) => {
     setSelectedTags(prev => 
@@ -171,16 +372,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         deleteProject,
         setSearchQuery,
         setSelectedCategory,
-        toggleTagSelection
+        toggleTagSelection,
+        isLoading
       }}
     >
-      {isLoading ? (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </ProjectContext.Provider>
   );
 };
