@@ -2,7 +2,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { Project } from '@/types';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from './ui/use-toast';
 
@@ -22,35 +22,27 @@ const DeleteConfirmationDialog = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { currentUser } = useAuth();
   
-  // Check admin status when dialog opens
-  useEffect(() => {
-    if (isOpen && (!currentUser || currentUser.role !== 'admin')) {
+  if (!project) return null;
+  
+  // Before showing the dialog, check if user is authenticated as admin
+  if (isOpen && (!currentUser || currentUser.role !== 'admin')) {
+    // We'll close the dialog in the next render cycle to avoid state updates during render
+    setTimeout(() => {
       toast({
         title: "Authentication Required",
         description: "Only admins can delete projects",
         variant: "destructive"
       });
       onClose();
-    }
-  }, [isOpen, currentUser, onClose]);
-  
-  if (!project) return null;
+    }, 0);
+    
+    return null;
+  }
   
   const handleConfirm = async () => {
     try {
       // Double-check authentication status
-      if (!currentUser) {
-        toast({
-          title: "Authentication Required",
-          description: "You must be logged in to delete projects",
-          variant: "destructive"
-        });
-        onClose();
-        return;
-      }
-      
-      // Check admin role
-      if (currentUser.role !== 'admin') {
+      if (!currentUser || currentUser.role !== 'admin') {
         toast({
           title: "Permission Denied",
           description: "Only admins can delete projects",
