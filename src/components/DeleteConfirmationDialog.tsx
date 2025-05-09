@@ -2,7 +2,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { Project } from '@/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from './ui/use-toast';
 
@@ -21,37 +21,33 @@ const DeleteConfirmationDialog = ({
 }: DeleteConfirmationDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { currentUser } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
   
-  if (!project) return null;
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'admin') {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [currentUser]);
   
-  // Before showing the dialog, check if user is authenticated as admin
-  if (isOpen && (!currentUser || currentUser.role !== 'admin')) {
-    // We'll close the dialog in the next render cycle to avoid state updates during render
-    setTimeout(() => {
+  useEffect(() => {
+    // Close the dialog if it's open but user is not admin
+    if (isOpen && !isAdmin) {
       toast({
         title: "Authentication Required",
         description: "Only admins can delete projects",
         variant: "destructive"
       });
       onClose();
-    }, 0);
-    
-    return null;
-  }
+    }
+  }, [isOpen, isAdmin, onClose]);
+  
+  if (!project) return null;
+  if (!isAdmin) return null;
   
   const handleConfirm = async () => {
     try {
-      // Double-check authentication status
-      if (!currentUser || currentUser.role !== 'admin') {
-        toast({
-          title: "Permission Denied",
-          description: "Only admins can delete projects",
-          variant: "destructive"
-        });
-        onClose();
-        return;
-      }
-      
       setIsDeleting(true);
       await onConfirm();
     } catch (error) {

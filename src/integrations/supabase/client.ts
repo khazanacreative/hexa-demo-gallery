@@ -19,3 +19,27 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     debug: true // Enable debug mode to log authentication issues
   }
 });
+
+// Add a helper function to verify admin status
+export const isUserAdmin = async (): Promise<boolean> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return false;
+    
+    // First check user metadata
+    const userRole = session.user.user_metadata?.role;
+    if (userRole === 'admin') return true;
+    
+    // If not in metadata, try to get from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+      
+    return profile?.role === 'admin';
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+};

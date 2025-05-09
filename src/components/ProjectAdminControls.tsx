@@ -19,38 +19,25 @@ const ProjectAdminControls = ({
   onDelete
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status once when component mounts
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'admin') {
+      setIsAdmin(true);
+    }
+  }, [currentUser]);
   
-  // We're directly checking if the user is admin without useState/useEffect
-  // to avoid potential stale closures or delayed updates
-  if (!currentUser || currentUser.role !== 'admin') return null;
+  // Don't render anything if not admin
+  if (!isAdmin) return null;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (!currentUser || currentUser.role !== 'admin') {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in as admin to edit projects",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     if (onEdit) onEdit(project);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (!currentUser || currentUser.role !== 'admin') {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in as admin to delete projects",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     if (onDelete) onDelete(project);
   };
 
