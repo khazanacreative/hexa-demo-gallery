@@ -2,7 +2,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { Project } from '@/types';
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from './ui/use-toast';
 
@@ -20,23 +20,29 @@ const DeleteConfirmationDialog = ({
   onConfirm,
 }: DeleteConfirmationDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, checkAuthStatus } = useAuth();
   
-  // Check admin status immediately when rendering
+  useEffect(() => {
+    // Check authentication status when component mounts or isOpen changes
+    if (isOpen) {
+      checkAuthStatus();
+    }
+  }, [isOpen, checkAuthStatus]);
+  
+  // Check admin status
   const isAdmin = currentUser?.role === 'admin';
   
-  // If not admin and dialog is open, close it
-  if (isOpen && !isAdmin) {
-    // Use a setTimeout to avoid React state update during render
-    setTimeout(() => {
+  useEffect(() => {
+    // If not admin and dialog is open, close it
+    if (isOpen && !isAdmin) {
       toast({
         title: "Authentication Required",
         description: "Only admins can delete projects",
         variant: "destructive"
       });
       onClose();
-    }, 0);
-  }
+    }
+  }, [isOpen, isAdmin, onClose]);
   
   if (!project) return null;
   

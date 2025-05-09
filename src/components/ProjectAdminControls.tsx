@@ -3,8 +3,9 @@ import { Project } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
-import { useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from './ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -17,41 +18,89 @@ const ProjectAdminControls = ({
   onEdit, 
   onDelete
 }: ProjectAdminControlsProps) => {
-  const { currentUser } = useAuth();
+  const { currentUser, checkAuthStatus } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
   
-  // Instead of using useState and useEffect, directly compute the isAdmin value
-  const isAdmin = currentUser?.role === 'admin';
+  useEffect(() => {
+    const verifyAdminStatus = async () => {
+      await checkAuthStatus();
+      // Check if user is admin after authentication status is verified
+      setIsAdmin(currentUser?.role === 'admin');
+    };
+    
+    verifyAdminStatus();
+  }, [currentUser, checkAuthStatus]);
   
   if (!isAdmin) return null;
 
-  const handleEdit = (e: React.MouseEvent) => {
+  const handleEdit = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!currentUser || currentUser.role !== 'admin') {
+    try {
+      // Double check current session
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in as admin to edit projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!currentUser || currentUser.role !== 'admin') {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in as admin to edit projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (onEdit) onEdit(project);
+    } catch (error) {
+      console.error("Error checking authentication:", error);
       toast({
-        title: "Authentication Required",
-        description: "You must be logged in as admin to edit projects",
+        title: "Error",
+        description: "Failed to verify permissions. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    if (onEdit) onEdit(project);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!currentUser || currentUser.role !== 'admin') {
+    try {
+      // Double check current session
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in as admin to delete projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (!currentUser || currentUser.role !== 'admin') {
+        toast({
+          title: "Authentication Required",
+          description: "You must be logged in as admin to delete projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (onDelete) onDelete(project);
+    } catch (error) {
+      console.error("Error checking authentication:", error);
       toast({
-        title: "Authentication Required",
-        description: "You must be logged in as admin to delete projects",
+        title: "Error",
+        description: "Failed to verify permissions. Please try again.",
         variant: "destructive"
       });
-      return;
     }
-    
-    if (onDelete) onDelete(project);
   };
 
   return (

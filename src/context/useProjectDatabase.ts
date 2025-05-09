@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
@@ -82,7 +81,7 @@ export function useProjectDatabase() {
       console.error("Error in fetchProjects:", error);
       toast({
         title: "Error",
-        description: "Gagal memuat data project",
+        description: "Failed to load project data",
         variant: "destructive"
       });
       // Fallback to mock data
@@ -260,7 +259,7 @@ export function useProjectDatabase() {
       console.error("Error adding project:", error);
       toast({
         title: "Error",
-        description: `Gagal menambahkan project: ${error.message}`,
+        description: `Failed to add project: ${error.message}`,
         variant: "destructive"
       });
       throw error;
@@ -274,11 +273,13 @@ export function useProjectDatabase() {
     try {
       console.log("Updating project:", updatedProject);
       
-      // Check authentication
-      const isAuth = await checkAuthentication();
-      if (!isAuth) {
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error('User not authenticated');
       }
+      
+      console.log("Current user:", session.user);
 
       // Update in database with properly formatted data
       const { data, error } = await supabase
@@ -330,7 +331,7 @@ export function useProjectDatabase() {
 
       toast({
         title: "Project updated",
-        description: `${updatedProject.title} telah berhasil diperbarui.`,
+        description: `${updatedProject.title} has been updated successfully.`,
       });
       
       return updatedProjectFromDB;
@@ -338,12 +339,12 @@ export function useProjectDatabase() {
       console.error("Error updating project:", error);
       toast({
         title: "Error",
-        description: `Gagal memperbarui project: ${error.message}`,
+        description: `Failed to update project: ${error.message}`,
         variant: "destructive"
       });
       throw error;
     }
-  }, [checkAuthentication]);
+  }, []);
 
   /**
    * Delete a project from the database
@@ -355,11 +356,13 @@ export function useProjectDatabase() {
       // Find the project to be deleted (for toast message)
       const projectToDelete = projects.find(p => p.id === id);
       
-      // Check authentication
-      const isAuth = await checkAuthentication();
-      if (!isAuth) {
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error('User not authenticated');
       }
+      
+      console.log("Current user:", session.user);
 
       // Delete from database
       const { error } = await supabase
@@ -385,12 +388,12 @@ export function useProjectDatabase() {
       console.error("Error deleting project:", error);
       toast({
         title: "Error",
-        description: `Gagal menghapus project: ${error.message}`,
+        description: `Failed to delete project: ${error.message}`,
         variant: "destructive"
       });
       throw error;
     }
-  }, [projects, checkAuthentication]);
+  }, [projects]);
 
   /**
    * Manually refresh projects from the database
