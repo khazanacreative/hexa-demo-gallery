@@ -3,7 +3,7 @@ import { Project } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from './ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,18 +18,13 @@ const ProjectAdminControls = ({
   onEdit, 
   onDelete
 }: ProjectAdminControlsProps) => {
-  const { currentUser, checkAuthStatus } = useAuth();
+  const { currentUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
-    const verifyAdminStatus = async () => {
-      await checkAuthStatus();
-      // Check if user is admin after authentication status is verified
-      setIsAdmin(currentUser?.role === 'admin');
-    };
-    
-    verifyAdminStatus();
-  }, [currentUser, checkAuthStatus]);
+    // Check if user is admin based on currentUser, not calling checkAuthStatus
+    setIsAdmin(currentUser?.role === 'admin');
+  }, [currentUser]);
   
   if (!isAdmin) return null;
 

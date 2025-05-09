@@ -20,21 +20,11 @@ const DeleteConfirmationDialog = ({
   onConfirm,
 }: DeleteConfirmationDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { currentUser, checkAuthStatus } = useAuth();
+  const { currentUser } = useAuth();
   
+  // Check admin status when dialog opens
   useEffect(() => {
-    // Check authentication status when component mounts or isOpen changes
-    if (isOpen) {
-      checkAuthStatus();
-    }
-  }, [isOpen, checkAuthStatus]);
-  
-  // Check admin status
-  const isAdmin = currentUser?.role === 'admin';
-  
-  useEffect(() => {
-    // If not admin and dialog is open, close it
-    if (isOpen && !isAdmin) {
+    if (isOpen && (!currentUser || currentUser.role !== 'admin')) {
       toast({
         title: "Authentication Required",
         description: "Only admins can delete projects",
@@ -42,7 +32,7 @@ const DeleteConfirmationDialog = ({
       });
       onClose();
     }
-  }, [isOpen, isAdmin, onClose]);
+  }, [isOpen, currentUser, onClose]);
   
   if (!project) return null;
   
