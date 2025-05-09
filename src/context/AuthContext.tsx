@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,15 +72,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userId = data.session.user.id;
         let user = users.find(u => u.id === userId);
         
-        let userRole = "user";
+        let userRole: UserRole = "user";
         if (data.session.user && data.session.user.user_metadata && data.session.user.user_metadata.role) {
-          userRole = data.session.user.user_metadata.role;
+          // Ensure the role is a valid UserRole type
+          const metadataRole = data.session.user.user_metadata.role as string;
+          userRole = metadataRole === 'admin' ? 'admin' : 'user';
         } else if (
           data.session.user &&
-          data.session.user.raw_user_meta_data &&
-          data.session.user.raw_user_meta_data.role
+          data.session.user.user_metadata
         ) {
-          userRole = data.session.user.raw_user_meta_data.role;
+          // Check for role in user_metadata (corrected from raw_user_meta_data)
+          const metadataRole = data.session.user.user_metadata.role as string;
+          userRole = metadataRole === 'admin' ? 'admin' : 'user';
         }
         
         if (!user) {
@@ -174,12 +178,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userId = data.user.id;
           let localUser = users.find(u => u.id === userId);
           
+          // Determine the role from user_metadata
+          let userRole: UserRole = 'user';
+          if (data.user.user_metadata && data.user.user_metadata.role) {
+            const metadataRole = data.user.user_metadata.role as string;
+            userRole = metadataRole === 'admin' ? 'admin' : 'user';
+          }
+          
           if (!localUser) {
             localUser = {
               id: userId,
               name: data.user.email?.split('@')[0] || 'User',
               email: data.user.email || '',
-              role: 'admin',
+              role: userRole,
             };
             
             setUsers(prevUsers => [...prevUsers, localUser as AuthUser]);
