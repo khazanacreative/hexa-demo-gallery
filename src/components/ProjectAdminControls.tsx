@@ -5,7 +5,7 @@ import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
 import { useState, useEffect } from 'react';
 import { toast } from './ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isUserAdmin } from '@/integrations/supabase/client';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -20,24 +20,43 @@ const ProjectAdminControls = ({
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // Check admin status once when component mounts
+  
+  // Check admin status once when component mounts and when currentUser changes
   useEffect(() => {
-    if (currentUser && currentUser.role === 'admin') {
-      setIsAdmin(true);
-    }
+    const checkAdminStatus = async () => {
+      try {
+        // First check the currentUser from context
+        if (currentUser?.role === 'admin') {
+          console.log('User is admin via context');
+          setIsAdmin(true);
+          return;
+        }
+        
+        // If currentUser doesn't have admin role, double-check with server
+        const adminStatus = await isUserAdmin();
+        console.log('Admin status from server check:', adminStatus);
+        setIsAdmin(adminStatus);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminStatus();
   }, [currentUser]);
   
   // Don't render anything if not admin
   if (!isAdmin) return null;
-
+  
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Edit clicked for project:', project.id);
     if (onEdit) onEdit(project);
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Delete clicked for project:', project.id);
     if (onDelete) onDelete(project);
   };
 

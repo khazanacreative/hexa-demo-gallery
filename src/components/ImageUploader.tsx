@@ -1,9 +1,9 @@
 
 import React, { useCallback, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, checkStorageBucket } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { HexaButton } from './ui/hexa-button';
-import { Upload, Loader2, RefreshCw } from 'lucide-react';
+import { Upload, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { FileUploadResult } from '@/types';
 
@@ -27,6 +27,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
   const [bucketExists, setBucketExists] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Check if the current image is a placeholder
   const isPlaceholder = currentImageUrl.includes('placeholder') || !currentImageUrl;
@@ -35,47 +36,29 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
   useEffect(() => {
     const checkBucket = async () => {
       try {
-        // First try to list objects from the bucket as a lightweight check
-        const { data, error } = await supabase.storage.from(bucketName).list();
+        console.log(`Checking if bucket '${bucketName}' exists...`);
         
-        if (error) {
-          console.error('Error checking bucket:', error.message);
-          // Check if we need to create the bucket
-          if (error.message.includes('does not exist')) {
-            try {
-              // Attempt to create the bucket using SQL via a function call
-              console.log(`Creating bucket '${bucketName}'...`);
-              // This requires a server-side function or SQL that we've set up
-              await createBucketIfNeeded(bucketName);
-              setBucketExists(true);
-            } catch (createError) {
-              console.error('Error creating bucket:', createError);
-              setBucketExists(false);
-            }
-          } else {
-            setBucketExists(false);
-          }
+        // Check if bucket exists
+        const exists = await checkStorageBucket(bucketName);
+        
+        if (!exists) {
+          console.error(`Bucket '${bucketName}' does not exist`);
+          setErrorMessage(`Storage bucket '${bucketName}' does not exist`);
+          setBucketExists(false);
         } else {
-          console.log('Bucket exists:', bucketName);
+          console.log(`Bucket '${bucketName}' exists`);
           setBucketExists(true);
+          setErrorMessage(null);
         }
       } catch (error) {
         console.error('Error in bucket check:', error);
         setBucketExists(false);
+        setErrorMessage('Error checking storage bucket');
       }
     };
     
     checkBucket();
   }, [bucketName]);
-
-  // Helper function to create bucket via a server function (if available)
-  // In a real app, this would call a server endpoint
-  const createBucketIfNeeded = async (bucket: string) => {
-    // For now, we'll just assume the bucket exists or will be created
-    // through migrations since we can't create buckets directly from the client
-    console.log(`Assuming bucket '${bucket}' will be created through migrations`);
-    return true;
-  };
 
   const uploadImage = useCallback(async (file: File) => {
     try {
@@ -88,7 +71,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       // Get the current session to ensure authentication
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        // Handle case where user is not authenticated - attempt anonymous upload
         console.log('No session found, attempting anonymous upload');
         toast({
           title: "Authentication Required",
@@ -97,6 +79,8 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         });
         throw new Error('Authentication required for uploads');
       }
+      
+      console.log('User is authenticated:', sessionData.session.user.id);
       
       // Create a unique file name to avoid collisions
       const fileExt = file.name.split('.').pop();
@@ -151,6 +135,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       return url;
     } catch (error: any) {
       console.error('Error in uploadImage:', error);
+      setErrorMessage(error.message);
       toast({
         title: "Error",
         description: `Upload failed: ${error.message}`,
@@ -226,10 +211,11 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         )}
         
         {bucketExists === false && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
+            <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
             <div className="text-white text-center p-4">
               <p className="mb-2">Storage bucket not configured</p>
-              <p className="text-xs">Contact administrator to set up storage bucket: {bucketName}</p>
+              <p className="text-xs">{errorMessage || `Contact administrator to set up storage bucket: ${bucketName}`}</p>
             </div>
           </div>
         )}

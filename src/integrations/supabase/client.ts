@@ -43,3 +43,32 @@ export const isUserAdmin = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// Add helper to check storage bucket existence
+export const checkStorageBucket = async (bucketName: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.storage.getBucket(bucketName);
+    if (error) {
+      console.error(`Bucket ${bucketName} check failed:`, error);
+      return false;
+    }
+    console.log(`Bucket ${bucketName} exists:`, data);
+    return !!data;
+  } catch (error) {
+    console.error(`Error checking bucket ${bucketName}:`, error);
+    return false;
+  }
+};
+
+// Add function to ensure project-images bucket exists
+export const ensureProjectImagesBucket = async (): Promise<boolean> => {
+  const bucketName = 'project-images';
+  const bucketExists = await checkStorageBucket(bucketName);
+  
+  if (!bucketExists) {
+    console.warn(`${bucketName} bucket does not exist. Please check Supabase configuration.`);
+    return false;
+  }
+  
+  return true;
+};
