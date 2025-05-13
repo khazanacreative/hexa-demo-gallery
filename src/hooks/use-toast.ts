@@ -42,15 +42,12 @@ export function toast(opts: ToastOptions) {
 }
 
 export function useToast() {
-  // Create a local state for tracking toasts
-  const [toasts, setToasts] = React.useState<ToastT[]>([]);
-  
-  // Since sonnerToast.subscribe is not available, we'll use our own state management
-  // We'll just return an empty array for toasts, since the Sonner component handles rendering
+  // Since sonnerToast.subscribe is not available, we'll just expose the needed methods
+  // We won't try to track toast state locally since Sonner handles this internally
   
   return {
     toast,
     dismiss: sonnerToast.dismiss,
-    toasts: [], // Empty array as fallback
+    toasts: [] as ToastT[], // Cast to correct type to satisfy the interface
   };
 }
