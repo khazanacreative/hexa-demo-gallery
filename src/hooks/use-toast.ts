@@ -34,6 +34,7 @@ export function toast(opts: ToastOptions) {
       ...props,
     });
   } else {
+    // "default" case or any other variant
     return sonnerToast(title, {
       description,
       ...props,
