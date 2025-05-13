@@ -66,6 +66,7 @@ const ImageUploader = ({
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
       console.log(`[ImageUploader] Uploading image to ${bucketName}/${filePath} as user ${session.user.id}`);
+      console.log(`[ImageUploader] User role: ${currentUser?.role}`);
       
       // Use the uploadFile helper with progress callback
       const result = await uploadFile(
@@ -119,6 +120,10 @@ const ImageUploader = ({
           });
           return;
         }
+        
+        // Check if user is admin
+        const isAdmin = currentUser?.role === 'admin';
+        console.log('[ImageUploader] User deleting image, admin status:', isAdmin);
         
         // Extract the path from the URL
         const urlParts = currentImageUrl.split('.co/storage/v1/object/public/project-images/');

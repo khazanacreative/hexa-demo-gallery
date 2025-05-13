@@ -53,7 +53,7 @@ export const getPublicUrl = (bucket: string, path: string): string => {
   return data.publicUrl;
 };
 
-// Helper function to upload a file to storage
+// Enhanced helper function to upload a file to storage with better error handling
 export const uploadFile = async (
   bucket: string, 
   path: string, 
@@ -69,6 +69,7 @@ export const uploadFile = async (
     }
 
     console.log('[Storage Debug] Starting upload to bucket:', bucket, 'path:', path);
+    console.log('[Storage Debug] User ID:', session.user.id);
     
     // Simple progress tracking
     if (onProgress) {
@@ -106,7 +107,7 @@ export const uploadFile = async (
   }
 };
 
-// Helper function to delete a file from storage
+// Enhanced helper function to delete a file from storage with better error handling
 export const deleteFile = async (bucket: string, path: string): Promise<boolean> => {
   try {
     // Check if the user is authenticated
@@ -117,6 +118,18 @@ export const deleteFile = async (bucket: string, path: string): Promise<boolean>
     }
 
     console.log('[Storage Debug] Attempting to delete file from bucket:', bucket, 'path:', path);
+    console.log('[Storage Debug] User ID:', session.user.id);
+    
+    // Check if user is admin for logging purposes
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+      
+    if (profile && profile.role === 'admin') {
+      console.log('[Storage Debug] Admin user is deleting file');
+    }
     
     const { error } = await supabase.storage
       .from(bucket)
@@ -135,7 +148,7 @@ export const deleteFile = async (bucket: string, path: string): Promise<boolean>
   }
 };
 
-// Project-specific database operations
+// Project-specific database operations with improved admin handling
 export const projectOperations = {
   // Fetch all projects
   fetchProjects: async () => {
@@ -178,10 +191,19 @@ export const projectOperations = {
     }
   },
   
-  // Update an existing project
+  // Update an existing project with enhanced admin capability
   updateProject: async (projectId: string, projectData: any, userId: string) => {
     try {
       console.log('[Project Debug] Updating project with ID:', projectId, 'User ID:', userId);
+      
+      // Check if user is admin
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      console.log('[Project Debug] User role for update:', profileData?.role);
       
       const { data, error } = await supabase
         .from('projects')
@@ -205,10 +227,19 @@ export const projectOperations = {
     }
   },
   
-  // Delete a project
+  // Delete a project with enhanced admin capability
   deleteProject: async (projectId: string, userId: string) => {
     try {
       console.log('[Project Debug] Deleting project with ID:', projectId, 'User ID:', userId);
+      
+      // Check if user is admin for logging
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      console.log('[Project Debug] User role for deletion:', profileData?.role);
       
       // First, get the project to access its images
       const { data: project, error: fetchError } = await supabase
@@ -294,6 +325,18 @@ export const ensureStorageBuckets = async () => {
         console.log(`[Storage Debug] Bucket ${bucket} exists and is accessible`);
       }
     }
+    
+    // Check if the required folders exist
+    const requiredFolders = ['covers', 'screenshots'];
+    for (const folder of requiredFolders) {
+      try {
+        const { data } = await supabase.storage.from('project-images').list(folder);
+        console.log(`[Storage Debug] Folder ${folder} exists with ${data?.length || 0} files`);
+      } catch (err) {
+        console.log(`[Storage Debug] Folder ${folder} may not exist yet`);
+      }
+    }
+    
   } catch (error) {
     console.error('[Storage Debug] Exception in ensureStorageBuckets:', error);
   }

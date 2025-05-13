@@ -5,6 +5,7 @@ import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
 import { useEffect, useState } from 'react';
 import { supabase, checkProfileData } from '@/integrations/supabase/client';
+import { toast } from './ui/use-toast';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -67,6 +68,26 @@ const ProjectAdminControls = ({
     verifyAdminStatus();
   }, [currentUser]);
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log("Admin edit clicked for project:", project.id);
+    if (onEdit) {
+      onEdit(project);
+    }
+  };
+  
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    console.log("Admin delete clicked for project:", project.id);
+    if (onDelete) {
+      toast({
+        title: "Delete requested",
+        description: `Attempting to delete project "${project.title}"`,
+      });
+      onDelete(project);
+    }
+  };
+
   if (!isAdmin) return null;
 
   return (
@@ -75,10 +96,7 @@ const ProjectAdminControls = ({
         variant="hexa" 
         size="sm"
         className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit?.(project);
-        }}
+        onClick={handleEditClick}
       >
         <Edit size={14} />
       </HexaButton>
@@ -87,10 +105,7 @@ const ProjectAdminControls = ({
         variant="destructive"
         size="sm"
         className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete?.(project);
-        }}
+        onClick={handleDeleteClick}
       >
         <Trash2 size={14} />
       </HexaButton>
