@@ -4,7 +4,6 @@ import { Toast, ToastActionElement, ToastProps } from "@/components/ui/toast";
 import { 
   toast as sonnerToast, 
   ToastT,
-  Toaster as SonnerToaster,
 } from "sonner";
 
 type ToastOptions = ToastProps & {
@@ -43,27 +42,15 @@ export function toast(opts: ToastOptions) {
 }
 
 export function useToast() {
-  // Get access to toast functions
+  // Create a local state for tracking toasts
   const [toasts, setToasts] = React.useState<ToastT[]>([]);
   
-  // Use React's useEffect to sync with sonner's toast state
-  React.useEffect(() => {
-    // Subscribe to toasts
-    const unsubscribe = sonnerToast.subscribe((toast) => {
-      if (toast.id) {
-        setToasts((prev) => [...prev.filter(t => t.id !== toast.id), toast]);
-      }
-    });
-    
-    // Cleanup subscription
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  // Since sonnerToast.subscribe is not available, we'll use our own state management
+  // We'll just return an empty array for toasts, since the Sonner component handles rendering
   
   return {
     toast,
     dismiss: sonnerToast.dismiss,
-    toasts,
+    toasts: [], // Empty array as fallback
   };
 }
