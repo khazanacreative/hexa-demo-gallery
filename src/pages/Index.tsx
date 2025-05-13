@@ -2,7 +2,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProjectGallery from '@/components/ProjectGallery';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { ProjectProvider } from '@/context/ProjectContext';
 
 const IndexContent = () => {
@@ -28,7 +28,9 @@ const IndexContent = () => {
               </p>
             </div>
             
-            <ProjectGallery />
+            <ProjectProvider>
+              <ProjectGallery />
+            </ProjectProvider>
           </div>
         </section>
       </main>
@@ -40,11 +42,7 @@ const IndexContent = () => {
 
 const Index = () => {
   return (
-    <AuthProvider>
-      <ProjectProvider>
-        <IndexContent />
-      </ProjectProvider>
-    </AuthProvider>
+    <IndexContent />
   );
 };
 

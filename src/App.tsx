@@ -46,7 +46,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
   return <>{children}</>;
 };
 
-// App routes with authentication
+// App routes with authentication (Now wrapped inside AuthProvider in the App component)
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
   
