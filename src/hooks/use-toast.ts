@@ -22,7 +22,7 @@ export function toast(opts: ToastOptions) {
   // Log the toast details to console for debugging
   console.log("[Toast]", { title, description, variant });
   
-  // Determine the Sonner preset based on variant
+  // Use explicit string comparison instead of type comparison
   if (variant === "destructive") {
     return sonnerToast.error(title, {
       description,
