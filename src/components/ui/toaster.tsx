@@ -16,8 +16,12 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts && toasts.map && toasts.map(function ({ id, title, description, action, ...props }) {
+        // Filter out incompatible props that might come from Sonner
+        // We need to specifically remove 'type' if it exists and isn't compatible
+        const { type, ...compatibleProps } = props as any;
+        
         return (
-          <Toast key={id} {...props}>
+          <Toast key={id} {...compatibleProps}>
             <div className="grid gap-1">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && (
