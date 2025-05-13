@@ -3,6 +3,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Project } from "@/types";
 import { Loader2 } from "lucide-react";
 import { toast } from "./ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DeleteConfirmationDialogProps {
   project: Project | null;
@@ -23,9 +24,20 @@ const DeleteConfirmationDialog = ({
 
   const handleConfirm = async () => {
     try {
+      // Check auth status
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        toast({
+          title: "Authentication required",
+          description: "You must be logged in to delete projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       onConfirm();
     } catch (error) {
-      console.error("Error in confirmation handler:", error);
+      console.error("[DeleteDialog] Error in confirmation handler:", error);
       toast({
         title: "Error",
         description: "Failed to delete the project. Please try again.",

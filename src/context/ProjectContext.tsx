@@ -1,8 +1,9 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
-import { supabase, projectOperations, ensureStorageBuckets } from '@/integrations/supabase/client';
+import { supabase, projectOperations } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 interface ProjectContextType {
@@ -30,22 +31,22 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { currentUser, isAuthenticated } = useAuth();
 
-  // Ensure storage buckets exist when context is initialized
-  useEffect(() => {
-    ensureStorageBuckets();
-  }, []);
-
+  // Fetch projects on initial load
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setIsLoading(true);
-        console.log('Fetching projects from database...');
+        console.log('[ProjectContext] Fetching projects from database...');
+        
+        // Get session to check auth status
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[ProjectContext] Auth session:', session ? 'Active' : 'None');
         
         let data;
         try {
           data = await projectOperations.fetchProjects();
         } catch (error) {
-          console.error('Error using projectOperations:', error);
+          console.error('[ProjectContext] Error using projectOperations:', error);
           
           // Fallback to direct query
           const { data: fallbackData, error: fallbackError } = await supabase
@@ -54,14 +55,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             .order('created_at', { ascending: false });
           
           if (fallbackError) {
-            console.error('Supabase fallback error:', fallbackError);
+            console.error('[ProjectContext] Supabase fallback error:', fallbackError);
             throw fallbackError;
           }
           
           data = fallbackData;
         }
         
-        console.log('Fetched projects:', data);
+        console.log('[ProjectContext] Fetched projects:', data);
         
         if (data && data.length > 0) {
           const fetchedProjects: Project[] = data.map(item => ({
@@ -77,20 +78,44 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             createdAt: item.created_at || new Date().toISOString()
           }));
           
-          console.log('Mapped projects:', fetchedProjects);
+          console.log('[ProjectContext] Mapped projects:', fetchedProjects);
           setProjects(fetchedProjects);
         } else {
-          console.log('No projects found in database, using initial data');
+          console.log('[ProjectContext] No projects found in database, using initial data');
           // Convert the initial projects to have UUID format IDs
           const projectsWithUuids = initialProjects.map(p => ({
             ...p,
-            id: crypto.randomUUID(), // Generate proper UUIDs instead of simple strings
+            id: crypto.randomUUID(),
             features: p.features || []
           }));
           setProjects(projectsWithUuids);
+          
+          // If user is authenticated, we can add these initial projects to the database
+          if (session && session.user) {
+            console.log('[ProjectContext] Adding initial projects to database');
+            try {
+              for (const project of projectsWithUuids) {
+                const projectData = {
+                  title: project.title,
+                  description: project.description || '',
+                  cover_image: project.coverImage,
+                  screenshots: project.screenshots,
+                  demo_url: project.demoUrl,
+                  category: project.category,
+                  tags: project.tags,
+                  features: project.features || [],
+                  user_id: session.user.id
+                };
+                
+                await supabase.from('projects').insert(projectData);
+              }
+            } catch (err) {
+              console.error('[ProjectContext] Error adding initial projects to database:', err);
+            }
+          }
         }
       } catch (error) {
-        console.error('Error fetching projects:', error);
+        console.error('[ProjectContext] Error fetching projects:', error);
         toast({
           title: "Error",
           description: "Gagal memuat data project",
@@ -100,7 +125,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         // Convert the initial projects to have UUID format IDs
         const projectsWithUuids = initialProjects.map(p => ({
           ...p,
-          id: crypto.randomUUID(), // Generate proper UUIDs instead of simple strings
+          id: crypto.randomUUID(),
           features: p.features || []
         }));
         setProjects(projectsWithUuids);
@@ -112,12 +137,15 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     fetchProjects();
   }, []);
 
+  // Add a project
   const addProject = useCallback(async (projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
     try {
-      if (!currentUser) {
+      // Get session to check auth status
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
-          title: "Error",
-          description: "User not authenticated. Please login.",
+          title: "Authentication required",
+          description: "You must be logged in to add projects.",
           variant: "destructive"
         });
         return null;
@@ -145,19 +173,21 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         features: projectData.features || []
       };
       
+      console.log('[ProjectContext] Adding new project with data:', projectDataForBackend);
+      
       // Try to add using helper
       let newProjectFromDB;
       try {
-        newProjectFromDB = await projectOperations.addProject(projectDataForBackend, currentUser.id);
+        newProjectFromDB = await projectOperations.addProject(projectDataForBackend, session.user.id);
       } catch (error) {
-        console.error('Error using projectOperations for add:', error);
+        console.error('[ProjectContext] Error using projectOperations for add:', error);
         
         // Fallback to direct query
         const { data, error: insertError } = await supabase
           .from('projects')
           .insert({
             ...projectDataForBackend,
-            user_id: currentUser.id
+            user_id: session.user.id
           })
           .select()
           .single();
@@ -188,7 +218,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       
       return newProject;
     } catch (error) {
-      console.error('Error adding project:', error);
+      console.error('[ProjectContext] Error adding project:', error);
       toast({
         title: "Error",
         description: "Gagal menambahkan project ke database. Silakan coba lagi.",
@@ -196,15 +226,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       });
       return null;
     }
-  }, [currentUser]);
+  }, []);
 
+  // Update a project
   const updateProject = useCallback(async (updatedProject: Project) => {
     try {
-      if(!currentUser) {
+      // Get session to check auth status
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
-          title: "Error",
-          description: "User not authenticated. Please login.",
-          variant: "destructive",
+          title: "Authentication required",
+          description: "You must be logged in to update projects.",
+          variant: "destructive"
         });
         return null;
       }
@@ -212,13 +245,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       if(!updatedProject.id) {
         toast({
           title: "Error",
-          description: "Project id is missing.",
+          description: "Project ID is missing.",
           variant: "destructive",
         });
         return null;
       }
       
-      console.log('Updating project with ID:', updatedProject.id);
+      console.log('[ProjectContext] Updating project with ID:', updatedProject.id);
       
       // Prepare data for backend
       const projectDataForBackend = {
@@ -229,8 +262,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         demo_url: updatedProject.demoUrl,
         category: updatedProject.category,
         tags: updatedProject.tags,
-        features: updatedProject.features
+        features: updatedProject.features,
+        user_id: session.user.id
       };
+      
+      console.log('[ProjectContext] Update data:', projectDataForBackend);
       
       // Try to update using helper
       let updatedProjectFromDB;
@@ -238,10 +274,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         updatedProjectFromDB = await projectOperations.updateProject(
           updatedProject.id, 
           projectDataForBackend, 
-          currentUser.id
+          session.user.id
         );
       } catch (error) {
-        console.error('Error using projectOperations for update:', error);
+        console.error('[ProjectContext] Error using projectOperations for update:', error);
         
         // Fallback to direct query
         const { data, error: updateError } = await supabase
@@ -251,7 +287,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', updatedProject.id)
-          .eq('user_id', currentUser.id)
           .select()
           .single();
         
@@ -271,7 +306,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       
       return updatedProject;
     } catch (error) {
-      console.error('Error updating project:', error);
+      console.error('[ProjectContext] Error updating project:', error);
       toast({
         title: "Error",
         description: "Gagal memperbarui project di database. Silakan coba lagi.",
@@ -279,15 +314,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       });
       return null;
     }
-  }, [currentUser]);
+  }, []);
 
+  // Delete a project
   const deleteProject = useCallback(async (id: string) => {
     try {
-      if(!currentUser) {
+      // Get session to check auth status
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
-          title: "Error",
-          description: "User not authenticated. Please login.",
-          variant: "destructive",
+          title: "Authentication required",
+          description: "You must be logged in to delete projects.",
+          variant: "destructive"
         });
         return false;
       }
@@ -302,14 +340,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      console.log('Deleting project with ID:', id);
+      console.log('[ProjectContext] Deleting project with ID:', id);
       
       // Immediately update UI state to avoid lag
       setProjects(prev => prev.filter(p => p.id !== id));
       
       try {
         // Try to delete using projectOperations
-        await projectOperations.deleteProject(id, currentUser.id);
+        await projectOperations.deleteProject(id, session.user.id);
         
         toast({
           title: "Project berhasil dihapus",
@@ -319,7 +357,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         
         return true;
       } catch (error: any) {
-        console.error('Error using projectOperations for delete:', error);
+        console.error('[ProjectContext] Error using projectOperations for delete:', error);
         
         // If there was an error, try a direct delete
         try {
@@ -329,7 +367,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
             .eq('id', id);
           
           if (deleteError) {
-            console.error('Direct delete also failed:', deleteError);
+            console.error('[ProjectContext] Direct delete also failed:', deleteError);
             // Revert local state change
             setProjects(prev => [projectToDelete, ...prev.filter(p => p.id !== id)]);
             throw deleteError;
@@ -349,7 +387,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error) {
-      console.error('Error deleting project:', error);
+      console.error('[ProjectContext] Error deleting project:', error);
       toast({
         title: "Error",
         description: "Gagal menghapus project dari database. Silakan coba lagi.",
@@ -357,7 +395,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       });
       return false;
     }
-  }, [currentUser, projects]);
+  }, [projects]);
 
   const toggleTagSelection = useCallback((tag: string) => {
     setSelectedTags(prev => 
@@ -367,6 +405,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
+  // Filter projects based on search query, category, and tags
   const filteredProjects = projects.filter(project => {
     const matchesSearch = searchQuery === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||

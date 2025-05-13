@@ -70,9 +70,8 @@ export const uploadFile = async (
 
     console.log('[Storage Debug] Starting upload to bucket:', bucket, 'path:', path);
     
-    // Simple progress tracking - we'll use a manual approach since onUploadProgress is not available
+    // Simple progress tracking
     if (onProgress) {
-      // Start progress indicator
       onProgress(10);
     }
     
@@ -84,7 +83,6 @@ export const uploadFile = async (
         upsert: true
       });
 
-    // Update progress to simulate completion
     if (onProgress) {
       onProgress(100);
     }
@@ -272,6 +270,13 @@ export const ensureStorageBuckets = async () => {
   try {
     console.log('[Storage Debug] Checking for required storage buckets');
     
+    // Check if the user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log('[Storage Debug] User is not authenticated, skipping bucket check');
+      return;
+    }
+    
     const { data: buckets, error } = await supabase.storage.listBuckets();
     
     if (error) {
@@ -284,18 +289,9 @@ export const ensureStorageBuckets = async () => {
     
     for (const bucket of requiredBuckets) {
       if (!existingBuckets.includes(bucket)) {
-        console.log(`[Storage Debug] Creating bucket: ${bucket}`);
-        const { error: createError } = await supabase.storage.createBucket(bucket, {
-          public: true
-        });
-        
-        if (createError) {
-          console.error(`[Storage Debug] Error creating bucket ${bucket}:`, createError);
-        } else {
-          console.log(`[Storage Debug] Bucket ${bucket} created successfully`);
-        }
+        console.log(`[Storage Debug] Bucket ${bucket} is configured but not accessible`);
       } else {
-        console.log(`[Storage Debug] Bucket ${bucket} already exists`);
+        console.log(`[Storage Debug] Bucket ${bucket} exists and is accessible`);
       }
     }
   } catch (error) {
@@ -303,5 +299,5 @@ export const ensureStorageBuckets = async () => {
   }
 };
 
-// Initialize storage buckets when the client is imported
+// Initialize bucket check when the client is imported
 ensureStorageBuckets();

@@ -4,7 +4,7 @@ import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
-import { supabase, uploadFile, deleteFile, ensureStorageBuckets } from '@/integrations/supabase/client';
+import { supabase, uploadFile, deleteFile } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 
 interface ImageUploaderProps {
@@ -26,9 +26,18 @@ const ImageUploader = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const { isAuthenticated, currentUser } = useAuth();
   
-  // Ensure storage buckets exist on component mount
+  // Check auth status on load
   useEffect(() => {
-    ensureStorageBuckets();
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        console.log('[ImageUploader] User is authenticated:', data.session.user.id);
+      } else {
+        console.log('[ImageUploader] User is not authenticated');
+      }
+    };
+    
+    checkAuth();
   }, []);
   
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,7 +49,14 @@ const ImageUploader = ({
         throw new Error('You must select an image to upload.');
       }
       
-      if (!isAuthenticated || !currentUser) {
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "You must be logged in to upload images.",
+          variant: "destructive"
+        });
         throw new Error('You must be logged in to upload images.');
       }
       
@@ -49,9 +65,9 @@ const ImageUploader = ({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
-      console.log(`Uploading image to ${bucketName}/${filePath} as user ${currentUser.id}`);
+      console.log(`[ImageUploader] Uploading image to ${bucketName}/${filePath} as user ${session.user.id}`);
       
-      // Use the modified uploadFile helper with progress callback
+      // Use the uploadFile helper with progress callback
       const result = await uploadFile(
         bucketName, 
         filePath, 
@@ -74,7 +90,7 @@ const ImageUploader = ({
       });
 
     } catch (error: any) {
-      console.error('Error uploading image:', error);
+      console.error('[ImageUploader] Error uploading image:', error);
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : "Failed to upload image",
@@ -90,25 +106,51 @@ const ImageUploader = ({
   };
 
   const handleDeleteCurrentImage = async () => {
-    // If the current image is from Supabase storage, extract the path and delete it
-    if (currentImageUrl && currentImageUrl.includes('project-images') && !currentImageUrl.startsWith('/')) {
-      try {
+    try {
+      // If the current image is from Supabase storage
+      if (currentImageUrl && currentImageUrl.includes('project-images')) {
+        // Get the current session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast({
+            title: "Authentication required",
+            description: "You must be logged in to delete images.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         // Extract the path from the URL
-        const urlParts = currentImageUrl.split('project-images/');
+        const urlParts = currentImageUrl.split('.co/storage/v1/object/public/project-images/');
         if (urlParts.length > 1) {
           const path = urlParts[1];
-          console.log(`Attempting to delete file from ${bucketName}/${path}`);
-          await deleteFile(bucketName, path);
-          console.log("File deleted from storage:", path);
+          console.log(`[ImageUploader] Attempting to delete file from ${bucketName}/${path}`);
+          
+          const deleted = await deleteFile(bucketName, path);
+          if (deleted) {
+            console.log("[ImageUploader] File deleted from storage:", path);
+            toast({
+              title: "Success",
+              description: "Image deleted successfully",
+            });
+          } else {
+            console.error("[ImageUploader] Failed to delete from storage:", path);
+          }
+        } else {
+          console.error("[ImageUploader] Could not parse image path from URL:", currentImageUrl);
         }
-      } catch (error) {
-        console.error("Failed to delete file from storage:", error);
-        // Continue with clearing the image URL even if deletion fails
       }
+      
+      // Clear the image URL regardless of storage deletion success
+      onImageUploaded({ path: '', url: '' });
+    } catch (error) {
+      console.error("[ImageUploader] Error in handleDeleteCurrentImage:", error);
+      toast({
+        title: "Deletion failed",
+        description: "Failed to delete the image",
+        variant: "destructive"
+      });
     }
-    
-    // Clear the image URL regardless of storage deletion success
-    onImageUploaded({ path: '', url: '' });
   };
   
   return (
@@ -120,7 +162,7 @@ const ImageUploader = ({
             alt="Preview" 
             className="w-full h-full object-cover"
             onError={(e) => {
-              console.error('Image failed to load:', currentImageUrl);
+              console.error('[ImageUploader] Image failed to load:', currentImageUrl);
               (e.target as HTMLImageElement).src = '/placeholder.svg';
             }}
           />
@@ -145,8 +187,8 @@ const ImageUploader = ({
           variant="outline" 
           size="icon" 
           className="flex-shrink-0"
-          disabled={uploading || !isAuthenticated}
-          title={!isAuthenticated ? "Login to upload images" : "Upload image"}
+          disabled={uploading}
+          title="Upload image"
         >
           {uploading ? (
             <div className="relative">
@@ -166,7 +208,7 @@ const ImageUploader = ({
           accept="image/*"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           onChange={uploadImage}
-          disabled={uploading || !isAuthenticated}
+          disabled={uploading}
         />
       </div>
       
