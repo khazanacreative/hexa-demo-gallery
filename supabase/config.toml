@@ -1,1 +1,6 @@
+
 project_id = "svqjeqngyindshuxjurp"
+
+# Storage bucket configuration
+[storage]
+public_url = "https://svqjeqngyindshuxjurp.supabase.co/storage/v1/object/public"

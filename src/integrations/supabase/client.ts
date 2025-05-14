@@ -125,7 +125,7 @@ export const deleteFile = async (bucket: string, path: string): Promise<boolean>
       .from('profiles')
       .select('role')
       .eq('id', session.user.id)
-      .single();
+      .maybeSingle();
       
     if (profile && profile.role === 'admin') {
       console.log('[Storage Debug] Admin user is deleting file');
@@ -162,6 +162,7 @@ export const projectOperations = {
       throw error;
     }
     
+    console.log('[Project Debug] Successfully fetched projects:', data ? data.length : 0);
     return data;
   },
   
@@ -169,6 +170,7 @@ export const projectOperations = {
   addProject: async (projectData: any, userId: string) => {
     try {
       console.log('[Project Debug] Adding project with user ID:', userId);
+      console.log('[Project Debug] Project data:', projectData);
       
       const { data, error } = await supabase
         .from('projects')
@@ -184,6 +186,7 @@ export const projectOperations = {
         throw error;
       }
       
+      console.log('[Project Debug] Project added successfully:', data);
       return data;
     } catch (error) {
       console.error('[Project Debug] Exception in addProject:', error);
@@ -195,13 +198,14 @@ export const projectOperations = {
   updateProject: async (projectId: string, projectData: any, userId: string) => {
     try {
       console.log('[Project Debug] Updating project with ID:', projectId, 'User ID:', userId);
+      console.log('[Project Debug] Update data:', projectData);
       
       // Check if user is admin
       const { data: profileData } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
       console.log('[Project Debug] User role for update:', profileData?.role);
       
@@ -220,6 +224,7 @@ export const projectOperations = {
         throw error;
       }
       
+      console.log('[Project Debug] Project updated successfully:', data);
       return data;
     } catch (error) {
       console.error('[Project Debug] Exception in updateProject:', error);
@@ -237,7 +242,7 @@ export const projectOperations = {
         .from('profiles')
         .select('role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
       console.log('[Project Debug] User role for deletion:', profileData?.role);
       
@@ -246,18 +251,22 @@ export const projectOperations = {
         .from('projects')
         .select('cover_image, screenshots')
         .eq('id', projectId)
-        .single();
+        .maybeSingle();
       
       if (fetchError) {
         console.error('[Project Debug] Error fetching project for deletion:', fetchError);
       } else if (project) {
         // Delete cover image if it exists and is from Supabase
         if (project.cover_image && project.cover_image.includes('project-images')) {
-          const coverPath = project.cover_image.split('/project-images/')[1];
-          if (coverPath) {
-            await deleteFile('project-images', coverPath).catch(err => 
-              console.error('[Project Debug] Error deleting cover image:', err)
-            );
+          try {
+            const coverPath = project.cover_image.split('/project-images/')[1];
+            if (coverPath) {
+              await deleteFile('project-images', coverPath).catch(err => 
+                console.error('[Project Debug] Error deleting cover image:', err)
+              );
+            }
+          } catch (err) {
+            console.error('[Project Debug] Error parsing cover image path:', err);
           }
         }
         
@@ -265,11 +274,15 @@ export const projectOperations = {
         if (project.screenshots && project.screenshots.length > 0) {
           for (const screenshot of project.screenshots) {
             if (screenshot && screenshot.includes('project-images')) {
-              const screenshotPath = screenshot.split('/project-images/')[1];
-              if (screenshotPath) {
-                await deleteFile('project-images', screenshotPath).catch(err => 
-                  console.error('[Project Debug] Error deleting screenshot:', err)
-                );
+              try {
+                const screenshotPath = screenshot.split('/project-images/')[1];
+                if (screenshotPath) {
+                  await deleteFile('project-images', screenshotPath).catch(err => 
+                    console.error('[Project Debug] Error deleting screenshot:', err)
+                  );
+                }
+              } catch (err) {
+                console.error('[Project Debug] Error parsing screenshot path:', err);
               }
             }
           }
@@ -323,20 +336,30 @@ export const ensureStorageBuckets = async () => {
         console.log(`[Storage Debug] Bucket ${bucket} is configured but not accessible`);
       } else {
         console.log(`[Storage Debug] Bucket ${bucket} exists and is accessible`);
+        
+        // Create required folders if they don't exist
+        try {
+          for (const folder of ['covers', 'screenshots']) {
+            // Create a dummy test file to ensure the folder exists
+            const testFilePath = `${folder}/test-${Date.now()}.txt`;
+            const testContent = new Blob(['test'], { type: 'text/plain' });
+            
+            await supabase.storage
+              .from(bucket)
+              .upload(testFilePath, testContent, { upsert: true });
+              
+            // Delete the test file right away
+            await supabase.storage
+              .from(bucket)
+              .remove([testFilePath]);
+              
+            console.log(`[Storage Debug] Folder ${folder} is accessible`);
+          }
+        } catch (folderError) {
+          console.error(`[Storage Debug] Error checking folders in bucket ${bucket}:`, folderError);
+        }
       }
     }
-    
-    // Check if the required folders exist
-    const requiredFolders = ['covers', 'screenshots'];
-    for (const folder of requiredFolders) {
-      try {
-        const { data } = await supabase.storage.from('project-images').list(folder);
-        console.log(`[Storage Debug] Folder ${folder} exists with ${data?.length || 0} files`);
-      } catch (err) {
-        console.log(`[Storage Debug] Folder ${folder} may not exist yet`);
-      }
-    }
-    
   } catch (error) {
     console.error('[Storage Debug] Exception in ensureStorageBuckets:', error);
   }
