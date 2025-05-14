@@ -28,28 +28,30 @@ const ProjectAdminControls = ({
       try {
         setLoading(true);
         
-        // First check the currentUser from context
-        if (currentUser?.role === 'admin') {
-          console.log('User is admin via context');
-          setIsAdmin(true);
-          return;
-        }
-        
         // Special case for admin@example.com
         if (currentUser?.email === 'admin@example.com') {
           console.log('Admin email detected in component');
           setIsAdmin(true);
+          setLoading(false);
           return;
         }
         
-        // If currentUser doesn't have admin role, double-check with server
+        // If currentUser has admin role from context
+        if (currentUser?.role === 'admin') {
+          console.log('User is admin via context');
+          setIsAdmin(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Double-check with server as final verification
         const adminStatus = await isUserAdmin();
         console.log('Admin status from server check:', adminStatus);
         setIsAdmin(adminStatus);
+        setLoading(false);
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
-      } finally {
         setLoading(false);
       }
     };

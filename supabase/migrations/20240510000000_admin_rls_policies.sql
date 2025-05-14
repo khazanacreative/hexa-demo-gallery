@@ -25,10 +25,12 @@ CREATE POLICY "Authenticated users can upload project images"
   ON storage.objects FOR INSERT
   WITH CHECK (bucket_id = 'project-images' AND auth.role() = 'authenticated');
 
-CREATE POLICY "Project owners can update their images"
+CREATE POLICY "Admins can update any images"
   ON storage.objects FOR UPDATE
-  USING (bucket_id = 'project-images' AND (auth.uid() = owner OR (SELECT role FROM auth.users WHERE id = auth.uid()) = 'admin'));
+  USING (bucket_id = 'project-images' AND 
+        ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR auth.uid() = owner));
 
-CREATE POLICY "Project owners can delete their images"
+CREATE POLICY "Admins can delete any images"
   ON storage.objects FOR DELETE
-  USING (bucket_id = 'project-images' AND (auth.uid() = owner OR (SELECT role FROM auth.users WHERE id = auth.uid()) = 'admin'));
+  USING (bucket_id = 'project-images' AND 
+        ((SELECT role FROM profiles WHERE id = auth.uid()) = 'admin' OR auth.uid() = owner));

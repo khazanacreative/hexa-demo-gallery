@@ -1,6 +1,6 @@
 
 import React, { useCallback, useState, useEffect } from 'react';
-import { supabase, checkStorageBucket } from '@/integrations/supabase/client';
+import { supabase, checkStorageBucket, ensureProjectImagesBucket } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { HexaButton } from './ui/hexa-button';
 import { Upload, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -38,7 +38,19 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       try {
         console.log(`Checking if bucket '${bucketName}' exists...`);
         
-        // Check if bucket exists
+        if (bucketName === 'project-images') {
+          // Use the dedicated function for project-images bucket
+          const exists = await ensureProjectImagesBucket();
+          setBucketExists(exists);
+          if (!exists) {
+            setErrorMessage(`Storage bucket '${bucketName}' does not exist or could not be created`);
+          } else {
+            setErrorMessage(null);
+          }
+          return;
+        }
+        
+        // For other buckets, use the general check
         const exists = await checkStorageBucket(bucketName);
         
         if (!exists) {

@@ -6,6 +6,7 @@ project_id = "svqjeqngyindshuxjurp"
 [storage.buckets.project-images]
 public = true
 file_size_limit = "10mb"
+allowed_mime_types = ["image/*"]
 
 # Enable realtime for all tables
 [realtime]

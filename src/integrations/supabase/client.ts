@@ -35,14 +35,13 @@ export const isUserAdmin = async (): Promise<boolean> => {
       return true;
     }
     
-    // First check user metadata
-    const userRole = session.user.user_metadata?.role;
-    if (userRole === 'admin') {
+    // Check user metadata first (fastest)
+    if (session.user.user_metadata && session.user.user_metadata.role === 'admin') {
       console.log('Admin role found in user metadata');
       return true;
     }
     
-    // If not in metadata, try to get from profiles table
+    // If not in metadata, check profiles table
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('role')
@@ -51,15 +50,35 @@ export const isUserAdmin = async (): Promise<boolean> => {
       
     if (error) {
       console.error('Error fetching profile:', error);
-      return false;
+      // If profile fetch fails, fall back to email check
+      return session.user.email === 'admin@example.com';
     }
     
     const isAdmin = profile?.role === 'admin';
     console.log('Admin status from profile:', isAdmin);
+    
+    // If not admin yet but email is admin@example.com, update profile
+    if (!isAdmin && session.user.email === 'admin@example.com') {
+      console.log('Updating admin@example.com to have admin role in profile');
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', session.user.id);
+        
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+      } else {
+        console.log('Successfully updated admin role in profile');
+        return true;
+      }
+    }
+    
     return isAdmin;
   } catch (error) {
     console.error('Error checking admin status:', error);
-    return false;
+    // On error, special case for admin@example.com as fallback
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.email === 'admin@example.com' || false;
   }
 };
 
