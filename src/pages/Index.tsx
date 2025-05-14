@@ -1,11 +1,11 @@
 
+import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ProjectGallery from '@/components/ProjectGallery';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { ProjectProvider } from '@/context/ProjectProvider';
+import { useAuth } from '@/context/AuthContext';
 
-const IndexContent = () => {
+const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
       <Header />
@@ -33,16 +33,6 @@ const IndexContent = () => {
       
       <Footer />
     </div>
-  );
-};
-
-const Index = () => {
-  return (
-    <AuthProvider>
-      <ProjectProvider>
-        <IndexContent />
-      </ProjectProvider>
-    </AuthProvider>
   );
 };
 
