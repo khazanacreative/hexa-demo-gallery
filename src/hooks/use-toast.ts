@@ -1,19 +1,17 @@
 
 import * as React from "react";
-import { Toast, ToastActionElement, ToastProps } from "@/components/ui/toast";
-import { 
-  toast as sonnerToast, 
-  ToastT,
-} from "sonner";
+import { toast as sonnerToast } from "sonner";
 
-type ToastVariant = "default" | "destructive" | "success";
+export type ToastVariant = "default" | "destructive" | "success";
 
-type ToastOptions = ToastProps & {
+export type ToastOptions = {
   title?: string;
   description?: string;
-  action?: ToastActionElement;
+  action?: React.ReactNode;
   variant?: ToastVariant;
   duration?: number;
+  className?: string;
+  [key: string]: any;
 };
 
 const DEFAULT_TOAST_DURATION = 5000;
@@ -45,13 +43,19 @@ export function toast(opts: ToastOptions) {
   }
 }
 
+type ToastT = {
+  id: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactNode;
+  dismiss: () => void;
+};
+
 export function useToast() {
-  // Since sonnerToast.subscribe is not available, we'll just expose the needed methods
-  // We won't try to track toast state locally since Sonner handles this internally
-  
   return {
     toast,
     dismiss: sonnerToast.dismiss,
+    dismissToast: sonnerToast.dismiss,
     toasts: [] as ToastT[], // Cast to correct type to satisfy the interface
   };
 }
