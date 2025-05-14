@@ -6,11 +6,13 @@ import {
   ToastT,
 } from "sonner";
 
+type ToastVariant = "default" | "destructive" | "success";
+
 type ToastOptions = ToastProps & {
   title?: string;
   description?: string;
   action?: ToastActionElement;
-  variant?: "default" | "destructive" | "success";
+  variant?: ToastVariant;
   duration?: number;
 };
 
@@ -22,23 +24,24 @@ export function toast(opts: ToastOptions) {
   // Log the toast details to console for debugging
   console.log("[Toast]", { title, description, variant });
   
-  // Use explicit string comparison instead of type comparison
-  if (variant === "destructive") {
-    return sonnerToast.error(title, {
-      description,
-      ...props,
-    });
-  } else if (variant === "success") {
-    return sonnerToast.success(title, {
-      description,
-      ...props,
-    });
-  } else {
-    // "default" case or any other variant
-    return sonnerToast(title, {
-      description,
-      ...props,
-    });
+  // Use a type-safe approach with a switch statement
+  switch (variant) {
+    case "destructive":
+      return sonnerToast.error(title, {
+        description,
+        ...props,
+      });
+    case "success":
+      return sonnerToast.success(title, {
+        description,
+        ...props,
+      });
+    case "default":
+    default:
+      return sonnerToast(title, {
+        description,
+        ...props,
+      });
   }
 }
 
