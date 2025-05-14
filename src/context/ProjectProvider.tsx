@@ -23,6 +23,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       toggleTagSelection: filters.toggleTagSelection,
       isLoading: db.isLoading,
       refreshProjects: db.refreshProjects,
+      addFavorite: db.addFavorite,
+      removeFavorite: db.removeFavorite,
+      favorites: db.favorites
     }}>
       {children}
     </ProjectContext.Provider>

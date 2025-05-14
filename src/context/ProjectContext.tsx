@@ -16,6 +16,10 @@ interface ProjectContextType {
   toggleTagSelection: (tag: string) => void;
   isLoading: boolean;
   refreshProjects: () => Promise<void>;
+  // Add favorite functionality
+  addFavorite?: (projectId: string) => Promise<void>;
+  removeFavorite?: (projectId: string) => Promise<void>;
+  favorites?: string[];
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);

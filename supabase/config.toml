@@ -7,12 +7,30 @@ project_id = "svqjeqngyindshuxjurp"
 public = true
 file_size_limit = "10mb"
 
-# Enable realtime for the projects table
+# Enable realtime for all tables
 [realtime]
 enabled = true
 
 [[realtime.tables]]
 name = "projects"
+schema = "public"
+enabled = true
+
+[[realtime.tables.scopes]]
+name = "all"
+enabled = true
+
+[[realtime.tables]]
+name = "favorites"
+schema = "public"
+enabled = true
+
+[[realtime.tables.scopes]]
+name = "all"
+enabled = true
+
+[[realtime.tables]]
+name = "profiles"
 schema = "public"
 enabled = true
 

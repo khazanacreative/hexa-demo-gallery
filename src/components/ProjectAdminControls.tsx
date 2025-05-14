@@ -20,11 +20,14 @@ const ProjectAdminControls = ({
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Check admin status once when component mounts and when currentUser changes
   useEffect(() => {
     const checkAdminStatus = async () => {
       try {
+        setLoading(true);
+        
         // First check the currentUser from context
         if (currentUser?.role === 'admin') {
           console.log('User is admin via context');
@@ -39,14 +42,16 @@ const ProjectAdminControls = ({
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
+      } finally {
+        setLoading(false);
       }
     };
     
     checkAdminStatus();
   }, [currentUser]);
   
-  // Don't render anything if not admin
-  if (!isAdmin) return null;
+  // Don't render anything if not admin or still loading
+  if (loading || !isAdmin) return null;
   
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();

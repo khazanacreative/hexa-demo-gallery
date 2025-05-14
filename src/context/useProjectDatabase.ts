@@ -1,8 +1,9 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isUserAdmin } from '@/integrations/supabase/client';
 
 /**
  * Hook to manage project data with Supabase integration
@@ -11,6 +12,7 @@ export function useProjectDatabase() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   /**
    * Check if user is authenticated
@@ -77,6 +79,11 @@ export function useProjectDatabase() {
           setProjects(projectsWithUuids);
         }
       }
+
+      // If authenticated, fetch user favorites
+      if (hasSession) {
+        await fetchFavorites();
+      }
     } catch (error) {
       console.error("Error in fetchProjects:", error);
       toast({
@@ -95,6 +102,112 @@ export function useProjectDatabase() {
       setIsLoading(false);
     }
   }, [checkAuthentication]);
+
+  /**
+   * Fetch user's favorite projects
+   */
+  const fetchFavorites = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('project_id')
+        .eq('user_id', session.user.id);
+
+      if (error) {
+        console.error("Error fetching favorites:", error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const favoriteProjectIds = data.map(item => item.project_id);
+        setFavorites(favoriteProjectIds);
+        console.log("Favorites fetched:", favoriteProjectIds);
+      }
+    } catch (error) {
+      console.error("Error in fetchFavorites:", error);
+    }
+  }, []);
+
+  /**
+   * Add a project to favorites
+   */
+  const addFavorite = useCallback(async (projectId: string) => {
+    try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      const { error } = await supabase
+        .from('favorites')
+        .insert([
+          { user_id: session.user.id, project_id: projectId }
+        ]);
+
+      if (error) {
+        console.error("Error adding favorite:", error);
+        throw error;
+      }
+
+      // Update local state
+      setFavorites(prev => [...prev, projectId]);
+      
+      toast({
+        title: "Project favorited",
+        description: "Project has been added to your favorites.",
+      });
+    } catch (error) {
+      console.error("Error in addFavorite:", error);
+      toast({
+        title: "Error",
+        description: "Failed to favorite project",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  /**
+   * Remove a project from favorites
+   */
+  const removeFavorite = useCallback(async (projectId: string) => {
+    try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('User not authenticated');
+      }
+
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('project_id', projectId);
+
+      if (error) {
+        console.error("Error removing favorite:", error);
+        throw error;
+      }
+
+      // Update local state
+      setFavorites(prev => prev.filter(id => id !== projectId));
+      
+      toast({
+        title: "Project unfavorited",
+        description: "Project has been removed from your favorites.",
+      });
+    } catch (error) {
+      console.error("Error in removeFavorite:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unfavorite project",
+        variant: "destructive"
+      });
+    }
+  }, []);
 
   /**
    * Initialize database with mock data
@@ -168,6 +281,12 @@ export function useProjectDatabase() {
       throw new Error('User not authenticated');
     }
 
+    // Check if user is admin
+    const isAdmin = await isUserAdmin();
+    if (!isAdmin) {
+      throw new Error('Only admins can add projects');
+    }
+
     // Create a new project object with proper field names for Supabase
     const newProject = {
       title: projectData.title,
@@ -209,6 +328,12 @@ export function useProjectDatabase() {
       const isAuth = await checkAuthentication();
       if (!isAuth) {
         throw new Error('User not authenticated');
+      }
+      
+      // Check if user is admin
+      const isAdmin = await isUserAdmin();
+      if (!isAdmin) {
+        throw new Error('Only admins can add projects');
       }
       
       let data;
@@ -277,6 +402,12 @@ export function useProjectDatabase() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('User not authenticated');
+      }
+      
+      // Check if user is admin
+      const isAdmin = await isUserAdmin();
+      if (!isAdmin) {
+        throw new Error('Only admins can update projects');
       }
       
       console.log("Current user:", session.user);
@@ -360,6 +491,12 @@ export function useProjectDatabase() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('User not authenticated');
+      }
+      
+      // Check if user is admin
+      const isAdmin = await isUserAdmin();
+      if (!isAdmin) {
+        throw new Error('Only admins can delete projects');
       }
       
       console.log("Current user:", session.user);
@@ -519,5 +656,8 @@ export function useProjectDatabase() {
     deleteProject,
     refreshProjects,
     isAuthenticated,
+    favorites,
+    addFavorite,
+    removeFavorite
   };
 }
