@@ -30,6 +30,17 @@ supabase.auth.onAuthStateChange((event, session) => {
   }
 });
 
+// Storage bucket names and folder paths
+export const STORAGE_BUCKETS = {
+  PROJECT_IMAGES: 'project-images',
+  SECTION_BACKGROUNDS: 'section-backgrounds'
+};
+
+export const STORAGE_FOLDERS = {
+  PROJECT_COVERS: 'covers',
+  PROJECT_SCREENSHOTS: 'screenshots'
+};
+
 // Additional debug function to check profile data
 export const checkProfileData = async (userId: string) => {
   const { data, error } = await supabase
@@ -328,7 +339,7 @@ export const ensureStorageBuckets = async () => {
       return;
     }
     
-    const requiredBuckets = ['project-images'];
+    const requiredBuckets = [STORAGE_BUCKETS.PROJECT_IMAGES, STORAGE_BUCKETS.SECTION_BACKGROUNDS];
     const existingBuckets = buckets.map(b => b.name);
     
     for (const bucket of requiredBuckets) {
@@ -337,26 +348,42 @@ export const ensureStorageBuckets = async () => {
       } else {
         console.log(`[Storage Debug] Bucket ${bucket} exists and is accessible`);
         
-        // Create required folders if they don't exist
-        try {
-          for (const folder of ['covers', 'screenshots']) {
-            // Create a dummy test file to ensure the folder exists
-            const testFilePath = `${folder}/test-${Date.now()}.txt`;
-            const testContent = new Blob(['test'], { type: 'text/plain' });
+        // Check folder structure in buckets
+        if (bucket === STORAGE_BUCKETS.PROJECT_IMAGES) {
+          const { data: files, error: listError } = await supabase.storage
+            .from(bucket)
+            .list();
             
-            await supabase.storage
-              .from(bucket)
-              .upload(testFilePath, testContent, { upsert: true });
-              
-            // Delete the test file right away
-            await supabase.storage
-              .from(bucket)
-              .remove([testFilePath]);
-              
-            console.log(`[Storage Debug] Folder ${folder} is accessible`);
+          if (listError) {
+            console.error(`[Storage Debug] Error checking folder structure in ${bucket}:`, listError);
+          } else {
+            console.log(`[Storage Debug] Files in ${bucket}:`, files);
+            
+            // Check if required folders exist
+            const folders = [STORAGE_FOLDERS.PROJECT_COVERS, STORAGE_FOLDERS.PROJECT_SCREENSHOTS];
+            
+            for (const folder of folders) {
+              if (!files.some(f => f.name === `${folder}/`)) {
+                console.log(`[Storage Debug] Folder ${folder} not found, attempting to create a placeholder`);
+                try {
+                  // The folder will be created automatically when uploading files, but we can't
+                  // directly create empty folders through the API without creating a placeholder file
+                  const testContent = new Blob([''], { type: 'text/plain' });
+                  const testFilePath = `${folder}/.placeholder`;
+                  
+                  await supabase.storage
+                    .from(bucket)
+                    .upload(testFilePath, testContent, { upsert: true });
+                    
+                  console.log(`[Storage Debug] Created placeholder for folder ${folder}`);
+                } catch (folderError) {
+                  console.error(`[Storage Debug] Error creating placeholder for ${folder}:`, folderError);
+                }
+              } else {
+                console.log(`[Storage Debug] Folder ${folder} exists in bucket ${bucket}`);
+              }
+            }
           }
-        } catch (folderError) {
-          console.error(`[Storage Debug] Error checking folders in bucket ${bucket}:`, folderError);
         }
       }
     }
