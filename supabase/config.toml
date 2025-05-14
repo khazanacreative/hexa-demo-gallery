@@ -1,12 +1,1 @@
-
 project_id = "svqjeqngyindshuxjurp"
-
-# Storage bucket configuration
-[storage]
-public_url = "https://svqjeqngyindshuxjurp.supabase.co/storage/v1/object/public"
-
-# Define storage bucket folders
-[storage.folders]
-project_images_covers = "project-images/covers"
-project_images_screenshots = "project-images/screenshots"
-section_backgrounds = "section-backgrounds"

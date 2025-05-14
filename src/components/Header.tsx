@@ -1,10 +1,8 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { HexaButton } from './ui/hexa-button';
-import { UserIcon, Menu, LogOut, Users } from 'lucide-react';
+import { UserIcon, Menu, Search, LogOut, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface HeaderProps {
   onRoleToggle: () => void;
@@ -12,53 +10,8 @@ interface HeaderProps {
 
 const Header = ({ onRoleToggle }: HeaderProps) => {
   const { currentUser, logout } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = currentUser?.role === 'admin';
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // Verify admin status using both database and local state
-    const verifyAdminStatus = async () => {
-      if (!currentUser) {
-        setIsAdmin(false);
-        return;
-      }
-      
-      console.log("Current user in Header:", currentUser);
-      
-      // Hardcoded admin check for admin@example.com
-      if (currentUser.email === 'admin@example.com') {
-        console.log("Admin email detected in Header, granting admin privileges");
-        setIsAdmin(true);
-        return;
-      }
-      
-      // Check from local state first for quick UI response
-      if (currentUser.role === 'admin') {
-        setIsAdmin(true);
-      }
-      
-      // Double-check with database for confirmation
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', currentUser.id)
-          .single();
-          
-        if (error) {
-          console.error('Error verifying admin status in Header:', error);
-          // If database error, rely on local state
-        } else if (profile) {
-          console.log('User role from DB in Header:', profile.role);
-          setIsAdmin(profile.role === 'admin');
-        }
-      } catch (error) {
-        console.error('Error in admin verification in Header:', error);
-      }
-    };
-    
-    verifyAdminStatus();
-  }, [currentUser]);
 
   const handleLogout = () => {
     logout();
@@ -70,17 +23,11 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
       <div className="container mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Link to="/">
-            <h1 className="text-2xl font-bold">Galeri Hexa</h1>
+            <h1 className="text-2xl font-bold">Hexa Integra Mandiri</h1>
           </Link>
         </div>
                        
         <div className="flex items-center gap-3">
-          <div className="hidden md:flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded">
-            <UserIcon size={16} />
-            <span className="font-medium">
-              {currentUser?.name} ({isAdmin ? 'admin' : 'user'})
-            </span>
-          </div>
             
           {isAdmin && (
             <Link to="/users">
@@ -94,6 +41,8 @@ const Header = ({ onRoleToggle }: HeaderProps) => {
             </Link>
           )}
           
+          {/* Tombol Admin/User Mode dihapus */}
+
           <HexaButton 
             variant="ghost" 
             className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/10 ml-2"

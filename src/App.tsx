@@ -1,5 +1,6 @@
 
-import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -45,7 +46,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
   return <>{children}</>;
 };
 
-// App routes with authentication (Now wrapped inside AuthProvider in the App component)
+// App routes with authentication
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
   
@@ -84,7 +85,8 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <SonnerToaster />
+          <Toaster />
+          <Sonner />
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -9,8 +8,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useProjects } from '@/context/ProjectContext';
 import { HexaButton } from './ui/hexa-button';
 import { Input } from './ui/input';
-import { Plus, Filter, LayoutGrid, Search, X, Tag, Loader2 } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
 import { allTags } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
 
 const ProjectGallery = () => {
@@ -20,7 +20,6 @@ const ProjectGallery = () => {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { currentUser } = useAuth();
   const { 
@@ -33,8 +32,7 @@ const ProjectGallery = () => {
     selectedCategory,
     setSelectedCategory,
     selectedTags,
-    toggleTagSelection,
-    isLoading
+    toggleTagSelection
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
@@ -63,79 +61,167 @@ const ProjectGallery = () => {
   };
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
-    setIsSubmitting(true);
-    try {
-      const result = await addProject(projectData);
-      if (result) {
-        setIsAddFormOpen(false);
-      }
-    } catch (error) {
-      console.error('Error in handleAddProject:', error);
+    if (!currentUser) {
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat menambahkan project.",
+        description: "User not authenticated. Please login.",
         variant: "destructive"
       });
-    } finally {
-      setIsSubmitting(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          title: projectData.title,
+          description: projectData.description || '',
+          cover_image: projectData.coverImage,
+          screenshots: projectData.screenshots,
+          demo_url: projectData.demoUrl,
+          category: projectData.category,
+          tags: projectData.tags,
+          features: projectData.features,
+          user_id: currentUser.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+
+      if (data) {
+        const newProject: Project = {
+          id: data.id,
+          title: data.title,
+          description: data.description || '',
+          coverImage: data.cover_image || '',
+          screenshots: data.screenshots || [],
+          demoUrl: data.demo_url || '',
+          category: data.category || '',
+          tags: data.tags || [],
+          features: data.features || [],
+          createdAt: data.created_at || new Date().toISOString()
+        };
+
+        addProject(newProject);
+        toast({
+          title: "Project berhasil ditambahkan",
+          description: `${newProject.title} telah berhasil disimpan ke database.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error adding project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan project ke database. Silakan coba lagi.",
+        variant: "destructive"
+      });
     }
   };
 
   const handleUpdateProject = async (updatedProject: Project) => {
-    setIsSubmitting(true);
-    try {
-      const result = await updateProject(updatedProject);
-      if (result) {
-        setIsEditFormOpen(false);
-      }
-    } catch (error) {
-      console.error('Error in handleUpdateProject:', error);
+    if(!currentUser) {
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat memperbarui project.",
+        description: "User not authenticated. Please login.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if(!updatedProject.id) {
+      toast({
+        title: "Error",
+        description: "Project id is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      console.log('Updating project with ID:', updatedProject.id);
+
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          title: updatedProject.title,
+          description: updatedProject.description || '',
+          cover_image: updatedProject.coverImage,
+          screenshots: updatedProject.screenshots,
+          demo_url: updatedProject.demoUrl,
+          category: updatedProject.category,
+          tags: updatedProject.tags,
+          features: updatedProject.features,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', updatedProject.id)
+        .eq('user_id', currentUser.id);
+
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+
+      updateProject(updatedProject);
+      toast({
+        title: "Project berhasil diperbarui",
+        description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
+      });
+
+      setIsEditFormOpen(false);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memperbarui project di database. Silakan coba lagi.",
         variant: "destructive"
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleDeleteProjectConfirm = async () => {
-    if (!projectToDelete) return;
-    
-    setIsSubmitting(true);
-    try {
-      const success = await deleteProject(projectToDelete.id);
-      if (success) {
-        setIsDeleteDialogOpen(false);
-        setProjectToDelete(null);
-      }
-    } catch (error) {
-      console.error('Error in handleDeleteProjectConfirm:', error);
+  const handleDeleteProjectConfirm = async (id: string) => {
+    if(!currentUser) {
       toast({
         title: "Error",
-        description: "Terjadi kesalahan saat menghapus project.",
+        description: "User not authenticated. Please login.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      console.log('Deleting project with ID:', id);
+
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+
+      deleteProject(id);
+      toast({
+        title: "Project berhasil dihapus",
+        description: "Project telah dihapus dari database.",
+      });
+
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus project dari database. Silakan coba lagi.",
         variant: "destructive"
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const categories = Array.from(
     new Set(filteredProjects.map(p => p.category))
   );
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8 px-4 sm:px-6 flex items-center justify-center min-h-[300px]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-hexa-red" />
-          <p className="text-gray-500">Memuat data projects...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6">
@@ -241,7 +327,7 @@ const ProjectGallery = () => {
         ))}
       </div>
       
-      {filteredProjects.length === 0 && !isLoading && (
+      {filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No projects found matching the selected filters.</p>
         </div>
@@ -251,7 +337,7 @@ const ProjectGallery = () => {
         project={selectedProject} 
         isOpen={isModalOpen} 
         onClose={closeModal}
-        onEdit={isAdmin && selectedProject ? () => handleEditProject(selectedProject) : undefined}
+        onEdit={() => selectedProject && handleEditProject(selectedProject)}
       />
       
       {isAddFormOpen && (
@@ -260,7 +346,6 @@ const ProjectGallery = () => {
           onClose={() => setIsAddFormOpen(false)}
           onSubmit={handleAddProject}
           title="Add New Project"
-          isSubmitting={isSubmitting}
         />
       )}
       
@@ -271,7 +356,6 @@ const ProjectGallery = () => {
           onSubmit={handleUpdateProject}
           defaultValues={selectedProject}
           title="Edit Project"
-          isSubmitting={isSubmitting}
         />
       )}
       
@@ -279,8 +363,7 @@ const ProjectGallery = () => {
         project={projectToDelete}
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={handleDeleteProjectConfirm}
-        isSubmitting={isSubmitting}
+        onConfirm={() => projectToDelete && handleDeleteProjectConfirm(projectToDelete.id)}
       />
     </div>
   );
