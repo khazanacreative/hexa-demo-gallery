@@ -24,20 +24,39 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 export const isUserAdmin = async (): Promise<boolean> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return false;
+    if (!session) {
+      console.log('No session found, not admin');
+      return false;
+    }
+    
+    // Special case for admin@example.com
+    if (session.user.email === 'admin@example.com') {
+      console.log('Admin email detected, granting admin access');
+      return true;
+    }
     
     // First check user metadata
     const userRole = session.user.user_metadata?.role;
-    if (userRole === 'admin') return true;
+    if (userRole === 'admin') {
+      console.log('Admin role found in user metadata');
+      return true;
+    }
     
     // If not in metadata, try to get from profiles table
-    const { data: profile } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', session.user.id)
       .single();
       
-    return profile?.role === 'admin';
+    if (error) {
+      console.error('Error fetching profile:', error);
+      return false;
+    }
+    
+    const isAdmin = profile?.role === 'admin';
+    console.log('Admin status from profile:', isAdmin);
+    return isAdmin;
   } catch (error) {
     console.error('Error checking admin status:', error);
     return false;
@@ -50,6 +69,25 @@ export const checkStorageBucket = async (bucketName: string): Promise<boolean> =
     const { data, error } = await supabase.storage.getBucket(bucketName);
     if (error) {
       console.error(`Bucket ${bucketName} check failed:`, error);
+      
+      // Try to create the bucket if it doesn't exist
+      if (error.message.includes('does not exist')) {
+        console.log(`Attempting to create bucket ${bucketName}`);
+        const { data: createData, error: createError } = await supabase.storage.createBucket(bucketName, {
+          public: true,
+          fileSizeLimit: 10 * 1024 * 1024, // 10MB
+          allowedMimeTypes: ['image/*']
+        });
+        
+        if (createError) {
+          console.error(`Failed to create bucket ${bucketName}:`, createError);
+          return false;
+        }
+        
+        console.log(`Successfully created bucket ${bucketName}`);
+        return true;
+      }
+      
       return false;
     }
     console.log(`Bucket ${bucketName} exists:`, data);

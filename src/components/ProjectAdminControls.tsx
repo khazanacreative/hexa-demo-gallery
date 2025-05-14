@@ -35,6 +35,13 @@ const ProjectAdminControls = ({
           return;
         }
         
+        // Special case for admin@example.com
+        if (currentUser?.email === 'admin@example.com') {
+          console.log('Admin email detected in component');
+          setIsAdmin(true);
+          return;
+        }
+        
         // If currentUser doesn't have admin role, double-check with server
         const adminStatus = await isUserAdmin();
         console.log('Admin status from server check:', adminStatus);

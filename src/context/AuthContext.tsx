@@ -70,26 +70,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (data.session) {
         const userId = data.session.user.id;
-        let user = users.find(u => u.id === userId);
+        console.log('Auth session found, user ID:', userId);
         
-        let userRole: UserRole = "user";
-        if (data.session.user && data.session.user.user_metadata && data.session.user.user_metadata.role) {
-          // Ensure the role is a valid UserRole type
-          const metadataRole = data.session.user.user_metadata.role as string;
-          userRole = metadataRole === 'admin' ? 'admin' : 'user';
-        } else if (
-          data.session.user &&
-          data.session.user.user_metadata
-        ) {
-          // Check for role in user_metadata (corrected from raw_user_meta_data)
-          const metadataRole = data.session.user.user_metadata.role as string;
-          userRole = metadataRole === 'admin' ? 'admin' : 'user';
+        // Get role from Supabase profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          // Continue with user metadata as fallback
         }
+        
+        // Initialize role from profile or user metadata
+        let userRole: UserRole = "user";
+        let userName = data.session.user.email?.split('@')[0] || 'User';
+        
+        if (profileData) {
+          userRole = profileData.role === 'admin' ? 'admin' : 'user';
+          userName = profileData.name;
+          console.log('Profile found with role:', userRole);
+        } else if (data.session.user.user_metadata && data.session.user.user_metadata.role) {
+          userRole = data.session.user.user_metadata.role === 'admin' ? 'admin' : 'user';
+          if (data.session.user.user_metadata.name) {
+            userName = data.session.user.user_metadata.name;
+          }
+          console.log('User metadata role:', userRole);
+        } else {
+          // Special handling for admin@example.com
+          if (data.session.user.email === 'admin@example.com') {
+            userRole = 'admin';
+            console.log('Setting admin role for admin@example.com');
+            
+            // Update profile in database if needed
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .update({ role: 'admin' })
+              .eq('id', userId);
+            
+            if (updateError) {
+              console.error('Error updating profile role:', updateError);
+            }
+          }
+        }
+        
+        let user = users.find(u => u.id === userId);
         
         if (!user) {
           user = {
             id: userId,
-            name: data.session.user.email?.split('@')[0] || 'User',
+            name: userName,
             email: data.session.user.email || '',
             role: userRole,
           };
@@ -99,6 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUsers(prevUsers => prevUsers.map(u => u.id === userId ? user as AuthUser : u));
         }
         
+        console.log('Setting current user:', user);
         setCurrentUser(user as AuthUser);
         setIsAuthenticated(true);
         localStorage.setItem('hexa_currentUser', JSON.stringify(user));
@@ -145,6 +178,129 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("Trying to login with:", email);
       
+      // Special handling for admin@example.com
+      if (email === 'admin@example.com') {
+        console.log("Admin login detected");
+        
+        try {
+          console.log("Trying Supabase login for admin");
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (error) {
+            console.error("Supabase login error for admin:", error);
+            
+            // If admin doesn't exist in Supabase yet, sign them up
+            if (error.message.includes("Invalid login credentials")) {
+              console.log("Admin not found, creating admin account");
+              const { data: signupData, error: signupError } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                  data: {
+                    name: 'Admin User',
+                    role: 'admin'
+                  }
+                }
+              });
+              
+              if (signupError) {
+                console.error("Error creating admin account:", signupError);
+                throw signupError;
+              }
+              
+              if (signupData.user) {
+                console.log("Admin account created:", signupData.user);
+                
+                // Ensure admin role is set in profiles table
+                const { error: upsertError } = await supabase
+                  .from('profiles')
+                  .upsert({
+                    id: signupData.user.id,
+                    email: 'admin@example.com',
+                    name: 'Admin User',
+                    role: 'admin',
+                  });
+                
+                if (upsertError) {
+                  console.error("Error upserting admin profile:", upsertError);
+                }
+                
+                // Try login again
+                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                  email,
+                  password
+                });
+                
+                if (loginError) {
+                  console.error("Login failed after signup:", loginError);
+                  throw loginError;
+                }
+                
+                await checkAuthStatus();
+                
+                toast({
+                  title: "Success",
+                  description: "Admin account created and logged in",
+                });
+                
+                return true;
+              }
+            } else {
+              throw error;
+            }
+          }
+          
+          if (data.user) {
+            console.log("Admin login success:", data);
+            
+            // Update profile to ensure admin role
+            const { error: updateError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: data.user.id,
+                email: 'admin@example.com',
+                name: 'Admin User',
+                role: 'admin',
+              });
+            
+            if (updateError) {
+              console.error("Error updating admin profile:", updateError);
+            }
+            
+            await checkAuthStatus();
+            
+            toast({
+              title: "Success",
+              description: "Logged in as ADMIN",
+            });
+            
+            return true;
+          }
+        } catch (error) {
+          console.error("Admin login failed:", error);
+          
+          // Fallback to local login for admin
+          const localAdmin = users.find(u => u.email === 'admin@example.com' && u.password === password);
+          if (localAdmin) {
+            console.log("Using local admin account:", localAdmin);
+            setCurrentUser(localAdmin);
+            setIsAuthenticated(true);
+            localStorage.setItem('hexa_currentUser', JSON.stringify(localAdmin));
+            
+            toast({
+              title: "Success",
+              description: "Logged in as ADMIN (local)",
+            });
+            
+            return true;
+          }
+        }
+      }
+      
+      // Standard login flow
       const user = users.find(u => u.email === email && u.password === password);
       
       if (user) {
@@ -175,36 +331,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (data.user) {
           console.log("Supabase login success:", data);
-          const userId = data.user.id;
-          let localUser = users.find(u => u.id === userId);
-          
-          // Determine the role from user_metadata
-          let userRole: UserRole = 'user';
-          if (data.user.user_metadata && data.user.user_metadata.role) {
-            const metadataRole = data.user.user_metadata.role as string;
-            userRole = metadataRole === 'admin' ? 'admin' : 'user';
-          }
-          
-          if (!localUser) {
-            localUser = {
-              id: userId,
-              name: data.user.email?.split('@')[0] || 'User',
-              email: data.user.email || '',
-              role: userRole,
-            };
-            
-            setUsers(prevUsers => [...prevUsers, localUser as AuthUser]);
-          }
-          
-          setCurrentUser(localUser);
-          setIsAuthenticated(true);
-          localStorage.setItem('hexa_currentUser', JSON.stringify(localUser));
-          
-          toast({
-            title: "Success",
-            description: `Logged in as ${localUser.role.toUpperCase()}`,
-          });
-          
+          await checkAuthStatus();
           return true;
         }
         
@@ -278,6 +405,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: userData.email,
         password: userData.password,
         email_confirm: true,
+        user_metadata: {
+          name: userData.name,
+          role: userData.role
+        }
       });
       
       if (error) throw error;

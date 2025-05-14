@@ -8,6 +8,11 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const db = useProjectDatabase();
   const filters = useProjectFilters(db.projects);
 
+  // Function to check if a project is favorited
+  const isFavorite = useCallback((projectId: string) => {
+    return db.favorites.includes(projectId);
+  }, [db.favorites]);
+
   return (
     <ProjectContext.Provider value={{
       projects: db.projects,
@@ -25,7 +30,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       refreshProjects: db.refreshProjects,
       addFavorite: db.addFavorite,
       removeFavorite: db.removeFavorite,
-      favorites: db.favorites
+      favorites: db.favorites,
+      isFavorite
     }}>
       {children}
     </ProjectContext.Provider>

@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,9 +9,9 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
-import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProjectProvider from "./context/ProjectProvider";
+import { supabase } from "./integrations/supabase/client";
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -19,10 +19,30 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, checkAuthStatus } = useAuth();
   const location = useLocation();
+  const [checking, setChecking] = useState(true);
+  const [isAuth, setIsAuth] = useState(false);
+
+  // Force auth check on mount
+  useEffect(() => {
+    const check = async () => {
+      setChecking(true);
+      const result = await checkAuthStatus();
+      setIsAuth(result);
+      setChecking(false);
+    };
+    check();
+  }, [location.pathname, checkAuthStatus]);
   
-  if (!isAuthenticated) {
+  // Show loading state while checking
+  if (checking) {
+    return <div className="flex h-screen w-full items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
+    </div>;
+  }
+  
+  if (!isAuth && !isAuthenticated) {
     // Redirect to login with the return URL
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -36,14 +56,41 @@ interface AdminRouteProps {
 }
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated, currentUser, checkAuthStatus } = useAuth();
   const location = useLocation();
+  const [checking, setChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Force auth check on mount
+  useEffect(() => {
+    const check = async () => {
+      setChecking(true);
+      await checkAuthStatus();
+      setChecking(false);
+      
+      // Special case for admin@example.com
+      if (currentUser?.email === 'admin@example.com') {
+        setIsAdmin(true);
+        return;
+      }
+      
+      setIsAdmin(currentUser?.role === 'admin');
+    };
+    check();
+  }, [location.pathname, checkAuthStatus, currentUser]);
+  
+  // Show loading state while checking
+  if (checking) {
+    return <div className="flex h-screen w-full items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
+    </div>;
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   
-  if (currentUser?.role !== 'admin') {
+  if (!isAdmin) {
     return <Navigate to="/" replace />;
   }
   
@@ -54,11 +101,38 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
 const AppRoutes = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
   const location = useLocation();
+  const [checking, setChecking] = useState(true);
 
-  // Check auth status on route change
+  // Check auth status on route change and initialize
   useEffect(() => {
-    checkAuthStatus();
+    const verifyAuth = async () => {
+      setChecking(true);
+      await checkAuthStatus();
+      setChecking(false);
+    };
+    
+    verifyAuth();
   }, [location.pathname, checkAuthStatus]);
+
+  // Setup auth listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async () => {
+        await checkAuthStatus();
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [checkAuthStatus]);
+  
+  // Show loading state while checking
+  if (checking) {
+    return <div className="flex h-screen w-full items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
+    </div>;
+  }
   
   return (
     <Routes>
@@ -88,6 +162,7 @@ const App = () => {
         queries: {
           refetchOnWindowFocus: false,
           retry: false,
+          staleTime: 5 * 60 * 1000, // 5 minutes
         },
       }
     })

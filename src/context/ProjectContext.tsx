@@ -17,9 +17,10 @@ interface ProjectContextType {
   isLoading: boolean;
   refreshProjects: () => Promise<void>;
   // Add favorite functionality
-  addFavorite?: (projectId: string) => Promise<void>;
-  removeFavorite?: (projectId: string) => Promise<void>;
-  favorites?: string[];
+  addFavorite: (projectId: string) => Promise<void>;
+  removeFavorite: (projectId: string) => Promise<void>;
+  favorites: string[];
+  isFavorite: (projectId: string) => boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
