@@ -11,6 +11,7 @@ import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProjectProvider from "./context/ProjectProvider";
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -64,7 +65,9 @@ const AppRoutes = () => {
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={
         <ProtectedRoute>
-          <Index />
+          <ProjectProvider>
+            <Index />
+          </ProjectProvider>
         </ProtectedRoute>
       } />
       <Route path="/users" element={
