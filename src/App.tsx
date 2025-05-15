@@ -70,14 +70,29 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
       
       // Special case for admin@example.com
       if (currentUser?.email === 'admin@example.com') {
+        console.log('Admin email detected in component');
         setIsAdmin(true);
+        setLoading(false);
         return;
       }
       
-      setIsAdmin(currentUser?.role === 'admin');
+      // If currentUser has admin role from context
+      if (currentUser?.role === 'admin') {
+        console.log('User is admin via context');
+        setIsAdmin(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Double-check with server as final verification
+      const adminStatus = await isUserAdmin();
+      console.log('Admin status from server check:', adminStatus);
+      setIsAdmin(adminStatus);
+      setLoading(false);
     };
-    check();
-  }, [location.pathname, checkAuthStatus, currentUser]);
+    
+    checkAdminStatus();
+  }, [currentUser]);
   
   // Show loading state while checking
   if (checking) {
@@ -97,7 +112,39 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
   return <>{children}</>;
 };
 
-// App routes with authentication
+// Fixed: Moved AppRoutes inside App to ensure it's wrapped by AuthProvider
+const App = () => {
+  // Create a client inside the component
+  const [queryClient] = React.useState(
+    () => new QueryClient({
+      defaultOptions: {
+        queries: {
+          refetchOnWindowFocus: false,
+          retry: false,
+          staleTime: 5 * 60 * 1000, // 5 minutes
+        },
+      }
+    })
+  );
+
+  return (
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <AppRoutes />
+            </TooltipProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+};
+
+// App routes with authentication - Fixed: Moved inside App function to ensure it's wrapped by AuthProvider
 const AppRoutes = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
   const location = useLocation();
@@ -151,37 +198,6 @@ const AppRoutes = () => {
       } />
       <Route path="*" element={<NotFound />} />
     </Routes>
-  );
-};
-
-const App = () => {
-  // Create a client inside the component
-  const [queryClient] = React.useState(
-    () => new QueryClient({
-      defaultOptions: {
-        queries: {
-          refetchOnWindowFocus: false,
-          retry: false,
-          staleTime: 5 * 60 * 1000, // 5 minutes
-        },
-      }
-    })
-  );
-
-  return (
-    <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <AppRoutes />
-            </TooltipProvider>
-          </BrowserRouter>
-        </AuthProvider>
-      </QueryClientProvider>
-    </React.StrictMode>
   );
 };
 
