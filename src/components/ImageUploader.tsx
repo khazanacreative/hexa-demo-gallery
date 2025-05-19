@@ -94,6 +94,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       
       console.log('User is authenticated:', sessionData.session.user.id);
       
+      // Verify admin status for additional logging
+      const isAdmin = await isUserAdmin();
+      console.log('Is admin uploading?', isAdmin);
+      
       // Create a unique file name to avoid collisions
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
@@ -214,11 +218,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         
         {uploading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            {uploading ? (
-              <Loader2 className="h-8 w-8 text-white animate-spin" />
-            ) : (
-              <RefreshCw className="h-8 w-8 text-white" />
-            )}
+            <Loader2 className="h-8 w-8 text-white animate-spin" />
           </div>
         )}
         

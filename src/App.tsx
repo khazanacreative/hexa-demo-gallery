@@ -65,38 +65,44 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
   // Force auth check on mount
   useEffect(() => {
     const checkAdminStatus = async () => {
-      setChecking(true);
-      await checkAuthStatus();
-      setChecking(false);
-      
-      // Special case for admin@example.com
-      if (currentUser?.email === 'admin@example.com') {
-        console.log('Admin email detected in component');
-        setIsAdmin(true);
+      try {
+        setChecking(true);
+        await checkAuthStatus();
+        setChecking(false);
+        
+        // Special case for admin@example.com
+        if (currentUser?.email === 'admin@example.com') {
+          console.log('Admin email detected in component');
+          setIsAdmin(true);
+          setLoading(false);
+          return;
+        }
+        
+        // If currentUser has admin role from context
+        if (currentUser?.role === 'admin') {
+          console.log('User is admin via context');
+          setIsAdmin(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Double-check with server as final verification
+        const adminStatus = await isUserAdmin();
+        console.log('Admin status from server check:', adminStatus);
+        setIsAdmin(adminStatus);
         setLoading(false);
-        return;
-      }
-      
-      // If currentUser has admin role from context
-      if (currentUser?.role === 'admin') {
-        console.log('User is admin via context');
-        setIsAdmin(true);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
         setLoading(false);
-        return;
       }
-      
-      // Double-check with server as final verification
-      const adminStatus = await isUserAdmin();
-      console.log('Admin status from server check:', adminStatus);
-      setIsAdmin(adminStatus);
-      setLoading(false);
     };
     
     checkAdminStatus();
   }, [currentUser, checkAuthStatus]);
   
   // Show loading state while checking
-  if (checking) {
+  if (checking || loading) {
     return <div className="flex h-screen w-full items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
     </div>;

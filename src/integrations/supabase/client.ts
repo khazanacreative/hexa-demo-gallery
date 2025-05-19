@@ -32,6 +32,33 @@ export const isUserAdmin = async (): Promise<boolean> => {
     // Special case for admin@example.com
     if (session.user.email === 'admin@example.com') {
       console.log('Admin email detected, granting admin access');
+      
+      // Check if the user already exists in profiles table
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+        
+      // If profile doesn't exist or doesn't have admin role, update it
+      if (profileError || !existingProfile || existingProfile.role !== 'admin') {
+        console.log('Updating admin@example.com profile with admin role');
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({ 
+            id: session.user.id,
+            name: 'Admin User',
+            email: session.user.email,
+            role: 'admin'
+          });
+          
+        if (upsertError) {
+          console.error('Error upserting profile:', upsertError);
+        } else {
+          console.log('Successfully created/updated admin profile');
+        }
+      }
+      
       return true;
     }
     
@@ -120,12 +147,47 @@ export const checkStorageBucket = async (bucketName: string): Promise<boolean> =
 // Add function to ensure project-images bucket exists
 export const ensureProjectImagesBucket = async (): Promise<boolean> => {
   const bucketName = 'project-images';
-  const bucketExists = await checkStorageBucket(bucketName);
-  
-  if (!bucketExists) {
-    console.warn(`${bucketName} bucket does not exist. Please check Supabase configuration.`);
+  try {
+    // First check if bucket exists
+    const { data: bucketData, error: bucketError } = await supabase.storage.getBucket(bucketName);
+    
+    // If bucket doesn't exist, try to create it
+    if (bucketError && bucketError.message.includes('does not exist')) {
+      console.log(`${bucketName} bucket does not exist, creating it...`);
+      
+      const { error: createError } = await supabase.storage.createBucket(bucketName, {
+        public: true,
+        fileSizeLimit: 10 * 1024 * 1024, // 10MB
+        allowedMimeTypes: ['image/*']
+      });
+      
+      if (createError) {
+        console.error(`Failed to create ${bucketName} bucket:`, createError);
+        return false;
+      }
+      
+      console.log(`Successfully created ${bucketName} bucket`);
+      
+      // Now set up the bucket policy for public access
+      const { error: policyError } = await supabase.rpc('create_public_bucket_policy', { 
+        bucket_id: bucketName 
+      });
+      
+      if (policyError) {
+        console.warn(`Note: Could not set public policy on bucket: ${policyError.message}`);
+        // Continue anyway as the bucket was created
+      }
+      
+      return true;
+    } else if (bucketError) {
+      console.error(`Error checking ${bucketName} bucket:`, bucketError);
+      return false;
+    }
+    
+    console.log(`${bucketName} bucket exists:`, bucketData);
+    return true;
+  } catch (error) {
+    console.error(`Error in ensureProjectImagesBucket:`, error);
     return false;
   }
-  
-  return true;
 };
