@@ -127,10 +127,10 @@ export const checkStorageBucket = async (bucketName: string): Promise<boolean> =
           allowedMimeTypes: ['image/*']
         };
         
-        // Cast the entire options object to any type to bypass TypeScript's type checking
+        // Cast using double type assertion for maximum compatibility
         const { data: createData, error: createError } = await supabase.storage.createBucket(
           bucketName, 
-          bucketOptions as any
+          (bucketOptions as unknown) as any
         );
         
         if (createError) {
@@ -170,10 +170,10 @@ export const ensureProjectImagesBucket = async (): Promise<boolean> => {
         allowedMimeTypes: ['image/*']
       };
       
-      // Fix: Cast the entire options object to any type
+      // Use double type assertion to fix the TypeScript error
       const { error: createError } = await supabase.storage.createBucket(
         bucketName, 
-        bucketOptions as any
+        (bucketOptions as unknown) as any
       );
       
       if (createError) {
