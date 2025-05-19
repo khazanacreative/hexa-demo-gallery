@@ -11,7 +11,7 @@ import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProjectProvider from "./context/ProjectProvider";
-import { supabase } from "./integrations/supabase/client";
+import { supabase, isUserAdmin } from "./integrations/supabase/client";
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -60,10 +60,11 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
   const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Force auth check on mount
   useEffect(() => {
-    const check = async () => {
+    const checkAdminStatus = async () => {
       setChecking(true);
       await checkAuthStatus();
       setChecking(false);
@@ -92,7 +93,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     };
     
     checkAdminStatus();
-  }, [currentUser]);
+  }, [currentUser, checkAuthStatus]);
   
   // Show loading state while checking
   if (checking) {
