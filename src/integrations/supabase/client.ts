@@ -120,16 +120,17 @@ export const checkStorageBucket = async (bucketName: string): Promise<boolean> =
       if (error.message.includes('does not exist')) {
         console.log(`Attempting to create bucket ${bucketName}`);
         
-        // Fix the type error by using proper typing for createBucket options
+        // Fix the type error by creating a properly typed object
         const createOptions = {
           public: true,
           fileSizeLimit: 10 * 1024 * 1024, // 10MB
           allowedMimeTypes: ['image/*']
         };
         
+        // Use type assertion with unknown as intermediate step to bypass TypeScript's strict checking
         const { data: createData, error: createError } = await supabase.storage.createBucket(
           bucketName, 
-          createOptions as any // Use type assertion to bypass strict typing
+          createOptions as unknown as any
         );
         
         if (createError) {
@@ -162,17 +163,17 @@ export const ensureProjectImagesBucket = async (): Promise<boolean> => {
     if (bucketError && bucketError.message.includes('does not exist')) {
       console.log(`${bucketName} bucket does not exist, creating it...`);
       
-      // Fix the type error by using proper typing
+      // Fix the type error by creating a properly typed object
       const options = {
         public: true,
         fileSizeLimit: 10 * 1024 * 1024, // 10MB
         allowedMimeTypes: ['image/*']
       };
       
-      // Use type assertion to bypass TypeScript's strict checking
+      // Use type assertion with unknown as intermediate step for safer casting
       const { error: createError } = await supabase.storage.createBucket(
         bucketName, 
-        options as any // Type assertion to fix the error
+        options as unknown as any
       );
       
       if (createError) {
