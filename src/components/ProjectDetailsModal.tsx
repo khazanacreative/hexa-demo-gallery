@@ -1,3 +1,4 @@
+
 import { Project } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ExternalLink, ChevronLeft, ChevronRight, Star, MessageSquare, Share2, Edit } from 'lucide-react';
@@ -21,9 +22,22 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetail
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const [isAdmin, setIsAdmin] = useState(false);
   const { updateProject } = useProjects();
+  
+  // Safe auth context usage
+  let currentUser;
+  try {
+    const authContext = useAuth();
+    currentUser = authContext?.currentUser;
+    
+    // Set admin status when context is available
+    useEffect(() => {
+      setIsAdmin(authContext?.currentUser?.role === 'admin');
+    }, [authContext?.currentUser]);
+  } catch (error) {
+    console.log('Auth context not available, continuing without authentication features');
+  }
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -200,16 +214,18 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onEdit }: ProjectDetail
 
             <div className="flex flex-wrap gap-3 items-center justify-between mt-6">
               <div className="flex gap-2">
-                <HexaButton 
-                  variant={isFavorited ? "hexa" : "outline"} 
-                  size="sm" 
-                  className="gap-1"
-                  onClick={toggleFavorite}
-                  disabled={isLoading}
-                >
-                  <Star size={14} className={isFavorited ? "fill-white" : ""} />
-                  <span>{isFavorited ? "Favorited" : "Favorite"}</span>
-                </HexaButton>
+                {currentUser && (
+                  <HexaButton 
+                    variant={isFavorited ? "hexa" : "outline"} 
+                    size="sm" 
+                    className="gap-1"
+                    onClick={toggleFavorite}
+                    disabled={isLoading}
+                  >
+                    <Star size={14} className={isFavorited ? "fill-white" : ""} />
+                    <span>{isFavorited ? "Favorited" : "Favorite"}</span>
+                  </HexaButton>
+                )}
                 
                 {isAdmin && (
                   <HexaButton 
