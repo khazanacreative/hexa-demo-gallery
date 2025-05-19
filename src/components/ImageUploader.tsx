@@ -1,6 +1,6 @@
 
 import React, { useCallback, useState, useEffect } from 'react';
-import { supabase, checkStorageBucket, ensureProjectImagesBucket } from '@/integrations/supabase/client';
+import { supabase, checkStorageBucket, ensureProjectImagesBucket, isUserAdmin } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { HexaButton } from './ui/hexa-button';
 import { Upload, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
