@@ -145,7 +145,7 @@ const App = () => {
   );
 };
 
-// App routes with authentication - Fixed: Moved inside App function to ensure it's wrapped by AuthProvider
+// App routes with authentication
 const AppRoutes = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
   const location = useLocation();
