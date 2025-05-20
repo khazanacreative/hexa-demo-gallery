@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -8,10 +9,65 @@ import { useAuth } from '@/context/AuthContext';
 import { useProjects } from '@/context/ProjectContext';
 import { HexaButton } from './ui/hexa-button';
 import { Input } from './ui/input';
-import { Plus, Filter, LayoutGrid, Search, X, Tag, RefreshCw } from 'lucide-react';
+import { Plus, Filter, LayoutGrid, Search, X, Tag, RefreshCw, Trash2 } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import { toast } from './ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+
+// Create a new ClearAllDialog component
+interface ClearAllDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isClearing: boolean;
+}
+
+const ClearAllDialog = ({ isOpen, onClose, onConfirm, isClearing }: ClearAllDialogProps) => {
+  const { currentUser } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'admin') {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [currentUser]);
+  
+  useEffect(() => {
+    // Close the dialog if it's open but user is not admin
+    if (isOpen && !isAdmin) {
+      toast({
+        title: "Authentication Required",
+        description: "Only admins can clear all projects",
+        variant: "destructive"
+      });
+      onClose();
+    }
+  }, [isOpen, isAdmin, onClose]);
+  
+  if (!isAdmin) return null;
+  
+  return (
+    <DeleteConfirmationDialog
+      project={{ 
+        id: 'clear-all',
+        title: 'ALL PROJECTS',
+        description: 'This will clear all projects from the database.',
+        coverImage: '/placeholder.svg',
+        screenshots: ['/placeholder.svg'],
+        demoUrl: 'https://example.com',
+        category: 'System',
+        tags: [],
+        features: [],
+        createdAt: new Date().toISOString()
+      }}
+      isOpen={isOpen}
+      onClose={onClose}
+      onConfirm={onConfirm}
+    />
+  );
+};
 
 const ProjectGallery = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -19,8 +75,10 @@ const ProjectGallery = () => {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
   const { currentUser, isAuthenticated, checkAuthStatus } = useAuth();
@@ -36,7 +94,8 @@ const ProjectGallery = () => {
     selectedTags,
     toggleTagSelection,
     refreshProjects,
-    isLoading
+    isLoading,
+    clearAllProjects // Use the new function
   } = useProjects();
   
   useEffect(() => {
@@ -108,6 +167,51 @@ const ProjectGallery = () => {
       });
     }
   }, [checkAuthStatus, currentUser?.role]);
+
+  const handleClearAllProjects = async () => {
+    try {
+      const isAuth = await checkAuthStatus();
+      if (!isAuth || currentUser?.role !== 'admin') {
+        toast({
+          title: "Permission Denied",
+          description: "Only admins can clear all projects",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setIsClearAllDialogOpen(true);
+    } catch (error) {
+      console.error('Error in clear all projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open clear all dialog. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleClearAllConfirm = async () => {
+    try {
+      setIsClearing(true);
+      await clearAllProjects();
+      setIsClearAllDialogOpen(false);
+      
+      toast({
+        title: "Success",
+        description: "All projects have been cleared",
+      });
+    } catch (error) {
+      console.error('Error clearing all projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear all projects. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -293,10 +397,23 @@ const ProjectGallery = () => {
           </HexaButton>
           
           {isAdmin && (
-            <HexaButton variant="hexa" size="sm" className="gap-1" onClick={handleAddNewProject}>
-              <Plus size={14} />
-              <span>New Project</span>
-            </HexaButton>
+            <>
+              <HexaButton 
+                variant="outline" 
+                size="sm" 
+                className="gap-1" 
+                onClick={handleClearAllProjects}
+                disabled={isClearing || filteredProjects.length === 0}
+              >
+                <Trash2 size={14} className="text-red-500" />
+                <span className="text-red-500">Clear All</span>
+              </HexaButton>
+              
+              <HexaButton variant="hexa" size="sm" className="gap-1" onClick={handleAddNewProject}>
+                <Plus size={14} />
+                <span>New Project</span>
+              </HexaButton>
+            </>
           )}
         </div>
       </div>
@@ -374,25 +491,42 @@ const ProjectGallery = () => {
           <p className="mt-4 text-gray-500">Loading projects...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <ProjectCard 
-              key={project.id} 
-              project={project} 
-              onClick={handleProjectClick}
-              onEdit={isAdmin ? handleEditProject : undefined}
-              onDelete={isAdmin ? handleDeleteProject : undefined}
-            />
-          ))}
-        </div>
+        <>
+          {filteredProjects.length === 0 ? (
+            <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg py-16 text-center">
+              <div className="text-gray-400 mb-4">
+                <LayoutGrid size={48} className="mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">No Projects Found</h3>
+              <p className="text-gray-500 mb-6">
+                {isAdmin 
+                  ? "It seems there are no projects yet. Click the 'New Project' button to add one."
+                  : "No projects found matching the selected filters."}
+              </p>
+              
+              {isAdmin && (
+                <HexaButton variant="hexa" size="sm" className="gap-2" onClick={handleAddNewProject}>
+                  <Plus size={16} />
+                  <span>Add New Project</span>
+                </HexaButton>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProjects.map((project) => (
+                <ProjectCard 
+                  key={project.id} 
+                  project={project} 
+                  onClick={handleProjectClick}
+                  onEdit={isAdmin ? handleEditProject : undefined}
+                  onDelete={isAdmin ? handleDeleteProject : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
       
-      {!isLoading && filteredProjects.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No projects found matching the selected filters.</p>
-        </div>
-      )}
-
       <ProjectDetailsModal 
         project={selectedProject} 
         isOpen={isModalOpen} 
@@ -424,6 +558,13 @@ const ProjectGallery = () => {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={() => projectToDelete && handleDeleteProjectConfirm(projectToDelete.id)}
+      />
+      
+      <ClearAllDialog
+        isOpen={isClearAllDialogOpen}
+        onClose={() => setIsClearAllDialogOpen(false)}
+        onConfirm={handleClearAllConfirm}
+        isClearing={isClearing}
       />
     </div>
   );

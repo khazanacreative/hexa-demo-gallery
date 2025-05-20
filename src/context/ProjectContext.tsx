@@ -21,6 +21,8 @@ interface ProjectContextType {
   removeFavorite: (projectId: string) => Promise<void>;
   favorites: string[];
   isFavorite: (projectId: string) => boolean;
+  // Add clear all projects functionality
+  clearAllProjects: () => Promise<boolean>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);

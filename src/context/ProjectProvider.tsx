@@ -31,7 +31,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       addFavorite: db.addFavorite,
       removeFavorite: db.removeFavorite,
       favorites: db.favorites,
-      isFavorite
+      isFavorite,
+      clearAllProjects: db.clearAllProjects
     }}>
       {children}
     </ProjectContext.Provider>

@@ -1,9 +1,8 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
-import { supabase, isUserAdmin } from '@/integrations/supabase/client';
+import { supabase, isUserAdmin, ensureProjectImagesBucket } from '@/integrations/supabase/client';
 
 /**
  * Hook to manage project data with Supabase integration
@@ -35,6 +34,9 @@ export function useProjectDatabase() {
       // Check authentication status
       const hasSession = await checkAuthentication();
       
+      // Ensure the storage bucket exists for project images
+      await ensureProjectImagesBucket();
+      
       // Fetch projects from database
       const { data, error } = await supabase
         .from('projects')
@@ -64,20 +66,9 @@ export function useProjectDatabase() {
         }));
         setProjects(dbProjects);
       } else {
-        // If no data and authenticated, initialize with mock data
-        if (hasSession) {
-          console.log("No projects found, initializing with mock data...");
-          await initializeWithMockData();
-        } else {
-          // If not authenticated, use mock data but don't save to database
-          console.log("User not authenticated, using mock data without saving to database");
-          const projectsWithUuids = initialProjects.map(p => ({
-            ...p,
-            id: crypto.randomUUID(),
-            features: p.features || []
-          }));
-          setProjects(projectsWithUuids);
-        }
+        // If no data, show empty state (don't initialize with mock data)
+        setProjects([]);
+        console.log("No projects found, showing empty state");
       }
 
       // If authenticated, fetch user favorites
@@ -91,17 +82,65 @@ export function useProjectDatabase() {
         description: "Failed to load project data",
         variant: "destructive"
       });
-      // Fallback to mock data
-      const fallbackProjects = initialProjects.map(p => ({
-        ...p,
-        id: crypto.randomUUID(),
-        features: p.features || []
-      }));
-      setProjects(fallbackProjects);
+      // Show empty state on error
+      setProjects([]);
     } finally {
       setIsLoading(false);
     }
   }, [checkAuthentication]);
+
+  /**
+   * Clear all projects from the database (for admin use only)
+   */
+  const clearAllProjects = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      // Check if user is admin
+      const isAdmin = await isUserAdmin();
+      if (!isAdmin) {
+        toast({
+          title: "Permission Denied",
+          description: "Only admin users can clear all projects",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      // Delete all projects from the database
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all projects
+      
+      if (error) {
+        console.error("Error clearing projects:", error);
+        throw error;
+      }
+      
+      console.log("All projects cleared from database");
+      
+      // Clear local state
+      setProjects([]);
+      
+      toast({
+        title: "Success",
+        description: "All projects have been cleared",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error clearing projects:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear projects",
+        variant: "destructive"
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   /**
    * Fetch user's favorite projects
@@ -658,6 +697,7 @@ export function useProjectDatabase() {
     isAuthenticated,
     favorites,
     addFavorite,
-    removeFavorite
+    removeFavorite,
+    clearAllProjects // Add new function to clear all projects
   };
 }
