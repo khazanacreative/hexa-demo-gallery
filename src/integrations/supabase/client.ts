@@ -183,14 +183,20 @@ export const ensureProjectImagesBucket = async (): Promise<boolean> => {
       
       console.log(`Successfully created ${bucketName} bucket`);
       
-      // Now set up the bucket policy for public access
-      const { error: policyError } = await supabase.rpc('create_public_bucket_policy', { 
-        bucket_id: bucketName 
-      });
-      
-      if (policyError) {
-        console.warn(`Note: Could not set public policy on bucket: ${policyError.message}`);
-        // Continue anyway as the bucket was created
+      // Now set up the bucket policy for public access - Fix the type error here
+      try {
+        // We need to use an object with named parameters, not just a string
+        const { error: policyError } = await supabase.rpc('create_public_bucket_policy', {
+          bucket_id: bucketName 
+        });
+        
+        if (policyError) {
+          console.warn(`Note: Could not set public policy on bucket: ${policyError.message}`);
+          // Continue anyway as the bucket was created
+        }
+      } catch (policyError) {
+        console.warn(`Failed to set bucket policy: ${policyError}`);
+        // Continue as bucket was still created
       }
       
       return true;
