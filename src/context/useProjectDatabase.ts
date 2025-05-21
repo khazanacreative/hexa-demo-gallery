@@ -2,7 +2,9 @@ import { useState, useCallback, useEffect } from 'react';
 import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
-import { supabase, isUserAdmin, ensureProjectImagesBucket } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
+import { isUserAdmin } from '@/integrations/supabase/auth';
+import { ensureProjectImagesBucket } from '@/integrations/supabase/storage';
 
 /**
  * Hook to manage project data with Supabase integration
