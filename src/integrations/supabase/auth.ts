@@ -92,3 +92,6 @@ export const isUserAdmin = async (): Promise<boolean> => {
     return session?.user?.email === 'admin@example.com' || false;
   }
 };
+
+// Export supabase from this module to fix the import error
+export { supabase };

@@ -17,7 +17,3 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     debug: true // Enable debug mode to log authentication issues
   }
 });
-
-// Export other modules for easy access
-export * from './auth';
-export * from './storage';

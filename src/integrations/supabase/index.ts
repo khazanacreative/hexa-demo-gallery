@@ -1,5 +1,5 @@
 
-// Export all Supabase modules from a single entry point
+// Export supabase client and all utilities for easier imports
 export * from './client';
 export * from './auth';
 export * from './storage';

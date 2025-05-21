@@ -1,10 +1,12 @@
+
 import { Project } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { Edit, Trash2 } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
 import { useState, useEffect } from 'react';
 import { toast } from './ui/use-toast';
-import { supabase, isUserAdmin } from '@/integrations/supabase/auth';
+import { isUserAdmin } from '@/integrations/supabase/auth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProjectAdminControlsProps {
   project: Project;
