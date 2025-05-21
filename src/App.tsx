@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,7 +10,7 @@ import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProjectProvider from "./context/ProjectProvider";
-import { supabase, isUserAdmin } from "./integrations/supabase/client";
+import { supabase, isUserAdmin } from "./integrations/supabase/auth";
 
 // Protected route component
 interface ProtectedRouteProps {
