@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase';
 import { isUserAdmin } from '@/integrations/supabase/auth';
 import { ensureProjectImagesBucket } from '@/integrations/supabase/storage';
 import { useFavorites } from './useFavorites';
+import { useAdminOperations } from './useAdminOperations';
 
 /**
  * Hook for basic project operations with Supabase integration
@@ -17,6 +18,9 @@ export function useProjects() {
   
   // Include favorites functionality
   const favorites = useFavorites();
+  
+  // Include admin operations functionality
+  const adminOps = useAdminOperations(setProjects);
 
   /**
    * Check if user is authenticated
@@ -478,6 +482,7 @@ export function useProjects() {
     deleteProject,
     refreshProjects,
     isAuthenticated,
-    ...favorites // Spread favorites functionality
+    ...favorites, // Spread favorites functionality
+    clearAllProjects: adminOps.clearAllProjects // Add clearAllProjects from adminOps
   };
 }
