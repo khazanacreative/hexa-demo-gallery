@@ -93,5 +93,5 @@ export const isUserAdmin = async (): Promise<boolean> => {
   }
 };
 
-// Export supabase from this module to fix the import error
+// Export supabase from this module to fix the import errors
 export { supabase };

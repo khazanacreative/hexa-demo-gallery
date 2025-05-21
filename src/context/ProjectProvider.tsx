@@ -1,6 +1,6 @@
 
 import { ReactNode, useCallback } from 'react';
-import { useProjectDatabase } from './useProjectDatabase';
+import { useProjectDatabase } from './database/useProjectDatabase';
 import { useProjectFilters } from './useProjectFilters';
 import ProjectContext from './ProjectContext';
 
