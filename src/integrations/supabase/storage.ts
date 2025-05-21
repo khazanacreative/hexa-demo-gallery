@@ -84,12 +84,10 @@ export const ensureProjectImagesBucket = async (): Promise<boolean> => {
       
       // Now set up the bucket policy for public access
       try {
-        // Use the @supabase/supabase-js type system's escape hatch
-        // This is the safest approach for RPC calls with custom functions
-        // where TypeScript doesn't know the parameter types
+        // Fix the RPC call by properly passing parameters
         const { error: policyError } = await supabase.rpc(
           'create_public_bucket_policy',
-          { bucket_id: bucketName } as any // Using type assertion as a last resort
+          { bucket_id: bucketName }
         );
         
         if (policyError) {
