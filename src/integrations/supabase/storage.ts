@@ -84,9 +84,9 @@ export const ensureProjectImagesBucket = async (): Promise<boolean> => {
       
       // Now set up the bucket policy for public access
       try {
-        // Fix the TypeScript error by providing both required type parameters
-        // First type parameter is the return type, second is the parameters type
-        const { error: policyError } = await supabase.rpc<void, { bucket_id: string }>(
+        // Fix the TypeScript error by using a more permissive type for the return value
+        // The Supabase rpc method needs proper typing for both return type and params
+        const { error: policyError } = await supabase.rpc(
           'create_public_bucket_policy',
           { bucket_id: bucketName }
         );
