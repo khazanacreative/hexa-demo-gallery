@@ -84,18 +84,10 @@ export const ensureProjectImagesBucket = async (): Promise<boolean> => {
       
       // Now set up the bucket policy for public access
       try {
-        // Fix for TypeScript error: Use a proper record type to match the RPC function parameter
-        interface BucketPolicyParams {
-          bucket_id: string;
-        }
-        
-        const params: BucketPolicyParams = { 
-          bucket_id: bucketName 
-        };
-        
+        // Fix for TypeScript error: Use type assertion to fix the parameter type issue
         const { error: policyError } = await supabase.rpc(
           'create_public_bucket_policy',
-          params
+          { bucket_id: bucketName } as Record<string, unknown>
         );
         
         if (policyError) {
