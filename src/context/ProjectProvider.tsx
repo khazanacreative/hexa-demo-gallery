@@ -1,11 +1,11 @@
 
 import { ReactNode, useCallback } from 'react';
-import { useProjectDatabase } from './database/useProjectDatabase';
+import { useProjects } from './database';
 import { useProjectFilters } from './useProjectFilters';
 import ProjectContext from './ProjectContext';
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
-  const db = useProjectDatabase();
+  const db = useProjects();
   const filters = useProjectFilters(db.projects);
 
   // Function to check if a project is favorited
