@@ -20,8 +20,10 @@ const ProjectAdminControls = ({
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
   const { refreshProjects } = useProjects();
-  const isAdmin = currentUser?.role === 'admin';
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Check if the user is an admin, this is critical for permissions
+  const isAdmin = currentUser?.role === 'admin';
 
   if (!isAdmin) return null;
 

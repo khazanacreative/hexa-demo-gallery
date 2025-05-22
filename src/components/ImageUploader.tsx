@@ -5,6 +5,7 @@ import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X, AlertCircle } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 interface ImageUploaderProps {
   currentImageUrl: string;
@@ -26,6 +27,7 @@ const ImageUploader = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
+  const { currentUser } = useAuth();
   
   useEffect(() => {
     // Update preview when currentImageUrl prop changes
@@ -59,6 +61,11 @@ const ImageUploader = ({
       if (!event.target.files || event.target.files.length === 0) {
         throw new Error('You must select an image to upload.');
       }
+
+      // Ensure user is logged in
+      if (!currentUser) {
+        throw new Error('You must be logged in to upload images.');
+      }
       
       const file = event.target.files[0];
       
@@ -66,16 +73,6 @@ const ImageUploader = ({
       if (!validateFile(file)) {
         setUploading(false);
         return;
-      }
-      
-      // Check if storage bucket exists, if not show a helpful error message
-      const { data: buckets, error: bucketsError } = await supabase
-        .storage
-        .listBuckets();
-        
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw new Error('Unable to access storage. Please make sure the storage bucket is set up correctly.');
       }
       
       // Create a unique file name to prevent collisions
@@ -93,7 +90,7 @@ const ImageUploader = ({
         });
 
       if (error) {
-        console.error('Error uploading:', error);
+        console.error('Storage error details:', error);
         throw error;
       }
 
@@ -136,11 +133,6 @@ const ImageUploader = ({
         event.target.value = '';
       }
     }
-  };
-
-  // Function to check if the URL is a Supabase storage URL
-  const isStorageUrl = (url: string): boolean => {
-    return url.includes(bucketName) || url.includes('supabase');
   };
   
   // Function to handle direct URL input

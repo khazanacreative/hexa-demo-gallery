@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -33,7 +34,8 @@ const ProjectGallery = () => {
     selectedCategory,
     setSelectedCategory,
     selectedTags,
-    toggleTagSelection
+    toggleTagSelection,
+    refreshProjects
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
@@ -86,26 +88,25 @@ const ProjectGallery = () => {
           features: projectData.features,
           user_id: currentUser.id
         })
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Error details:', error);
         throw error;
       }
 
-      if (data) {
+      if (data && data[0]) {
         const newProject: Project = {
-          id: data.id,
-          title: data.title,
-          description: data.description || '',
-          coverImage: data.cover_image || '',
-          screenshots: data.screenshots || [],
-          demoUrl: data.demo_url || '',
-          category: data.category || '',
-          tags: data.tags || [],
-          features: data.features || [],
-          createdAt: data.created_at || new Date().toISOString()
+          id: data[0].id,
+          title: data[0].title,
+          description: data[0].description || '',
+          coverImage: data[0].cover_image || '',
+          screenshots: data[0].screenshots || [],
+          demoUrl: data[0].demo_url || '',
+          category: data[0].category || '',
+          tags: data[0].tags || [],
+          features: data[0].features || [],
+          createdAt: data[0].created_at
         };
 
         addProject(newProject);
@@ -124,6 +125,8 @@ const ProjectGallery = () => {
     } finally {
       setIsSubmitting(false);
       setIsAddFormOpen(false);
+      // Refresh projects to ensure data consistency
+      refreshProjects();
     }
   };
 
@@ -169,6 +172,8 @@ const ProjectGallery = () => {
     } finally {
       setIsSubmitting(false);
       setIsEditFormOpen(false);
+      // Refresh projects to ensure data consistency
+      refreshProjects();
     }
   };
 
@@ -205,11 +210,13 @@ const ProjectGallery = () => {
     } finally {
       setIsSubmitting(false);
       setIsDeleteDialogOpen(false);
+      // Refresh projects to ensure data consistency
+      refreshProjects();
     }
   };
 
   const categories = Array.from(
-    new Set(filteredProjects.map(p => p.category))
+    new Set(filteredProjects.map(p => p.category).filter(Boolean))
   );
 
   return (
@@ -275,16 +282,18 @@ const ProjectGallery = () => {
         </HexaButton>
         
         {categories.map(category => (
-          <HexaButton
-            key={category}
-            variant={selectedCategory === category ? "hexa" : "outline"}
-            size="sm"
-            className="rounded-full"
-            onClick={() => setSelectedCategory(category)}
-          >
-            <Filter size={14} className="mr-1" />
-            {category}
-          </HexaButton>
+          category && (
+            <HexaButton
+              key={category}
+              variant={selectedCategory === category ? "hexa" : "outline"}
+              size="sm"
+              className="rounded-full"
+              onClick={() => setSelectedCategory(category)}
+            >
+              <Filter size={14} className="mr-1" />
+              {category}
+            </HexaButton>
+          )
         ))}
       </div>
       
