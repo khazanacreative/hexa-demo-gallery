@@ -5,6 +5,7 @@ import { Edit, Trash2, Shield } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
 import { toast } from './ui/use-toast';
 import { useState } from 'react';
+import { useProjects } from '@/context/ProjectContext';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -18,18 +19,21 @@ const ProjectAdminControls = ({
   onDelete
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
+  const { refreshProjects } = useProjects();
   const isAdmin = currentUser?.role === 'admin';
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (!isAdmin) return null;
 
-  const handleEdit = (e: React.MouseEvent) => {
+  const handleEdit = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
     if (isProcessing) return;
     
     try {
-      onEdit?.(project);
+      if (onEdit) {
+        onEdit(project);
+      }
     } catch (error) {
       console.error('Edit error:', error);
       toast({
@@ -37,6 +41,9 @@ const ProjectAdminControls = ({
         description: "Failed to edit project. Please try again.",
         variant: "destructive"
       });
+      
+      // Try to refresh projects to sync with the database
+      await refreshProjects();
     }
   };
 
@@ -47,7 +54,9 @@ const ProjectAdminControls = ({
     
     setIsProcessing(true);
     try {
-      onDelete?.(project);
+      if (onDelete) {
+        onDelete(project);
+      }
     } catch (error) {
       console.error('Delete error:', error);
       toast({
@@ -55,6 +64,9 @@ const ProjectAdminControls = ({
         description: "Failed to delete project. Please try again.",
         variant: "destructive"
       });
+      
+      // Try to refresh projects to sync with the database
+      await refreshProjects();
     } finally {
       setIsProcessing(false);
     }

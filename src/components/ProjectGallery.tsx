@@ -20,6 +20,7 @@ const ProjectGallery = () => {
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { currentUser } = useAuth();
   const { 
@@ -61,7 +62,17 @@ const ProjectGallery = () => {
   };
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
+      console.log('Adding project:', projectData);
+      
+      // Check if the user is logged in
+      if (!currentUser?.id) {
+        throw new Error('You must be logged in to add a project');
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -73,7 +84,7 @@ const ProjectGallery = () => {
           category: projectData.category,
           tags: projectData.tags,
           features: projectData.features,
-          user_id: currentUser?.id
+          user_id: currentUser.id
         })
         .select()
         .single();
@@ -99,21 +110,27 @@ const ProjectGallery = () => {
 
         addProject(newProject);
         toast({
-          title: "Project berhasil ditambahkan",
-          description: `${newProject.title} telah berhasil disimpan ke database.`,
+          title: "Project added",
+          description: `${newProject.title} has been added successfully.`,
         });
       }
     } catch (error) {
       console.error('Error adding project:', error);
       toast({
         title: "Error",
-        description: "Gagal menambahkan project ke database. Silakan coba lagi.",
+        description: "Failed to add project. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
+      setIsAddFormOpen(false);
     }
   };
 
   const handleUpdateProject = async (updatedProject: Project) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
       console.log('Updating project with ID:', updatedProject.id);
 
@@ -127,63 +144,67 @@ const ProjectGallery = () => {
           demo_url: updatedProject.demoUrl,
           category: updatedProject.category,
           tags: updatedProject.tags,
-          features: updatedProject.features,
-          updated_at: new Date().toISOString()
+          features: updatedProject.features
         })
-        .eq('id', updatedProject.id)
-        .eq('user_id', currentUser?.id);
+        .eq('id', updatedProject.id);
 
       if (error) {
-        console.error('Error details:', error);
+        console.error('Update error details:', error);
         throw error;
       }
 
       updateProject(updatedProject);
       toast({
-        title: "Project berhasil diperbarui",
-        description: `${updatedProject.title} telah berhasil diperbarui dalam database.`,
+        title: "Project updated",
+        description: `${updatedProject.title} has been updated successfully.`,
       });
 
-      setIsEditFormOpen(false);
     } catch (error) {
       console.error('Error updating project:', error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui project di database. Silakan coba lagi.",
+        description: "Failed to update project. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
+      setIsEditFormOpen(false);
     }
   };
 
-  const handleDeleteProjectConfirm = async (id: string) => {
+  const handleDeleteProjectConfirm = async () => {
+    if (!projectToDelete || isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
-      console.log('Deleting project with ID:', id);
+      console.log('Deleting project with ID:', projectToDelete.id);
 
       const { error } = await supabase
         .from('projects')
         .delete()
-        .eq('id', id)
-        .eq('user_id', currentUser?.id);
+        .eq('id', projectToDelete.id);
 
       if (error) {
-        console.error('Error details:', error);
+        console.error('Delete error details:', error);
         throw error;
       }
 
-      deleteProject(id);
+      deleteProject(projectToDelete.id);
       toast({
-        title: "Project berhasil dihapus",
-        description: "Project telah dihapus dari database.",
+        title: "Project deleted",
+        description: "Project has been deleted successfully.",
       });
-
-      setIsDeleteDialogOpen(false);
+      
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({
         title: "Error",
-        description: "Gagal menghapus project dari database. Silakan coba lagi.",
+        description: "Failed to delete project. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -208,7 +229,13 @@ const ProjectGallery = () => {
           </div>
           
           {isAdmin && (
-            <HexaButton variant="hexa" size="sm" className="gap-1" onClick={handleAddNewProject}>
+            <HexaButton 
+              variant="hexa" 
+              size="sm" 
+              className="gap-1" 
+              onClick={handleAddNewProject} 
+              disabled={isSubmitting}
+            >
               <Plus size={14} />
               <span>New Project</span>
             </HexaButton>
@@ -305,7 +332,7 @@ const ProjectGallery = () => {
         project={selectedProject} 
         isOpen={isModalOpen} 
         onClose={closeModal}
-        onEdit={() => selectedProject && handleEditProject(selectedProject)}
+        onEdit={isAdmin && selectedProject ? () => handleEditProject(selectedProject) : undefined}
       />
       
       {isAddFormOpen && (
@@ -331,7 +358,7 @@ const ProjectGallery = () => {
         project={projectToDelete}
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={() => projectToDelete && handleDeleteProjectConfirm(projectToDelete.id)}
+        onConfirm={handleDeleteProjectConfirm}
       />
     </div>
   );

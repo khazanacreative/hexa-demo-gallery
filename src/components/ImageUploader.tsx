@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FileUploadResult } from '@/types';
 import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X, AlertCircle } from 'lucide-react';
@@ -25,12 +25,18 @@ const ImageUploader = ({
 }: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
+  
+  useEffect(() => {
+    // Update preview when currentImageUrl prop changes
+    setPreviewUrl(currentImageUrl);
+  }, [currentImageUrl]);
   
   const validateFile = (file: File): boolean => {
     // Check file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
     if (!validTypes.includes(file.type)) {
-      setError(`Invalid file type. Allowed types: ${validTypes.join(', ')}`);
+      setError(`Invalid file type. Allowed types: JPEG, PNG, GIF, WEBP, SVG`);
       return false;
     }
     
@@ -58,13 +64,26 @@ const ImageUploader = ({
       
       // Validate file before upload
       if (!validateFile(file)) {
+        setUploading(false);
         return;
+      }
+      
+      // Check if storage bucket exists, if not show a helpful error message
+      const { data: buckets, error: bucketsError } = await supabase
+        .storage
+        .listBuckets();
+        
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw new Error('Unable to access storage. Please make sure the storage bucket is set up correctly.');
       }
       
       // Create a unique file name to prevent collisions
       const fileExt = file.name.split('.').pop();
-      const timestamp = Date.now();
-      const filePath = `${folderPath}/${timestamp}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+      const filePath = `${folderPath}/${fileName}.${fileExt}`;
+      
+      console.log(`Uploading image to: ${bucketName}/${filePath}`);
       
       const { data, error } = await supabase.storage
         .from(bucketName)
@@ -74,7 +93,7 @@ const ImageUploader = ({
         });
 
       if (error) {
-        console.error('Error uploading:', error.message);
+        console.error('Error uploading:', error);
         throw error;
       }
 
@@ -82,10 +101,16 @@ const ImageUploader = ({
         throw new Error('Upload failed - no data returned');
       }
 
+      console.log('Upload successful:', data);
+
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(data.path);
+      
+      console.log('Public URL:', urlData);
 
+      // Set preview and notify parent component
+      setPreviewUrl(urlData.publicUrl);
       onImageUploaded({
         path: data.path,
         url: urlData.publicUrl
@@ -97,7 +122,7 @@ const ImageUploader = ({
       });
 
     } catch (error: any) {
-      console.error('Error:', error);
+      console.error('Upload error:', error);
       const errorMessage = error instanceof Error ? error.message : "Failed to upload image";
       setError(errorMessage);
       toast({
@@ -121,12 +146,14 @@ const ImageUploader = ({
   // Function to handle direct URL input
   const handleUrlChange = (url: string) => {
     setError(null);
+    setPreviewUrl(url);
     onImageUploaded({ path: '', url });
   };
   
   // Function to handle URL removal
   const handleClearImage = () => {
     setError(null);
+    setPreviewUrl('');
     onImageUploaded({ path: '', url: '' });
   };
   
@@ -134,14 +161,17 @@ const ImageUploader = ({
     <div className="space-y-2 w-full">
       <div className={`flex items-center gap-2 ${className}`}>
         <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-100 border">
-          {currentImageUrl ? (
+          {previewUrl ? (
             <img 
-              src={currentImageUrl} 
+              src={previewUrl} 
               alt="Preview" 
               className="w-full h-full object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder.svg';
+                if (previewUrl !== '/placeholder.svg') {
+                  console.error('Image failed to load:', previewUrl);
+                }
               }}
             />
           ) : (
@@ -155,7 +185,7 @@ const ImageUploader = ({
           type="text"
           className="flex-1 px-3 py-2 border border-gray-200 rounded"
           placeholder="Image URL or upload"
-          value={currentImageUrl}
+          value={previewUrl}
           onChange={(e) => handleUrlChange(e.target.value)}
         />
         
@@ -178,7 +208,7 @@ const ImageUploader = ({
           />
         </div>
         
-        {currentImageUrl && (
+        {previewUrl && (
           <HexaButton
             type="button"
             variant="outline"

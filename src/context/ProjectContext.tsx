@@ -11,12 +11,14 @@ interface ProjectContextType {
   searchQuery: string;
   selectedCategory: string | null;
   selectedTags: string[];
-  addProject: (project: Omit<Project, 'id' | 'createdAt'> | Project) => void;
+  addProject: (project: Project) => void;
   updateProject: (project: Project) => void;
   deleteProject: (id: string) => void;
   setSearchQuery: (query: string) => void;
   setSelectedCategory: (category: string | null) => void;
   toggleTagSelection: (tag: string) => void;
+  refreshProjects: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -28,57 +30,40 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        setIsLoading(true);
-        console.log('Fetching projects from database...');
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
+  const fetchProjects = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      console.log('Fetching projects from database...');
+      
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched projects:', data?.length || 0);
+      
+      if (data && data.length > 0) {
+        const fetchedProjects: Project[] = data.map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          coverImage: item.cover_image || '',
+          screenshots: item.screenshots || [],
+          demoUrl: item.demo_url || '',
+          category: item.category || '',
+          tags: item.tags || [],
+          features: item.features || [],
+          createdAt: item.created_at
+        }));
         
-        if (error) {
-          console.error('Supabase error:', error);
-          throw error;
-        }
-        
-        console.log('Fetched projects:', data);
-        
-        if (data && data.length > 0) {
-          const fetchedProjects: Project[] = data.map(item => ({
-            id: item.id,
-            title: item.title,
-            description: item.description || '',
-            coverImage: item.cover_image || '',
-            screenshots: item.screenshots || [],
-            demoUrl: item.demo_url || '',
-            category: item.category || '',
-            tags: item.tags || [],
-            features: item.features || [],
-            createdAt: item.created_at
-          }));
-          
-          console.log('Mapped projects:', fetchedProjects);
-          setProjects(fetchedProjects);
-        } else {
-          console.log('No projects found in database, using initial data');
-          // Convert the initial projects to have UUID format IDs
-          const projectsWithUuids = initialProjects.map(p => ({
-            ...p,
-            id: crypto.randomUUID(), // Generate proper UUIDs instead of simple strings
-            features: p.features || []
-          }));
-          setProjects(projectsWithUuids);
-        }
-      } catch (error) {
-        console.error('Error fetching projects:', error);
-        toast({
-          title: "Error",
-          description: "Gagal memuat data project",
-          variant: "destructive"
-        });
-        
+        setProjects(fetchedProjects);
+      } else {
+        console.log('No projects found in database, using initial data');
         // Convert the initial projects to have UUID format IDs
         const projectsWithUuids = initialProjects.map(p => ({
           ...p,
@@ -86,53 +71,57 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
           features: p.features || []
         }));
         setProjects(projectsWithUuids);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
-    fetchProjects();
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load projects data",
+        variant: "destructive"
+      });
+      
+      // Fallback to mock data
+      const projectsWithUuids = initialProjects.map(p => ({
+        ...p,
+        id: crypto.randomUUID(),
+        features: p.features || []
+      }));
+      setProjects(projectsWithUuids);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const addProject = useCallback((projectData: Omit<Project, 'id' | 'createdAt'> | Project) => {
-    if ('id' in projectData && 'createdAt' in projectData) {
-      setProjects(prev => [projectData as Project, ...prev]);
-      return;
-    }
+  useEffect(() => {
+    fetchProjects();
     
-    const newProject: Project = {
-      ...projectData as Omit<Project, 'id' | 'createdAt'>,
-      id: crypto.randomUUID(), // Generate proper UUID
-      createdAt: new Date().toISOString(),
-      features: (projectData as Omit<Project, 'id' | 'createdAt'>).features || []
+    // Listen for changes in the projects table
+    const projectsSubscription = supabase
+      .channel('projects_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
+        console.log('Projects change detected:', payload);
+        fetchProjects();
+      })
+      .subscribe();
+    
+    return () => {
+      projectsSubscription.unsubscribe();
     };
-    
-    setProjects(prev => [newProject, ...prev]);
-    toast({
-      title: "Project added",
-      description: `${newProject.title} has been added successfully.`,
-    });
+  }, [fetchProjects]);
+
+  const addProject = useCallback((project: Project) => {
+    setProjects(prev => [project, ...prev]);
   }, []);
 
   const updateProject = useCallback((updatedProject: Project) => {
     setProjects(prev => 
       prev.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
-    toast({
-      title: "Project updated",
-      description: `${updatedProject.title} has been updated successfully.`,
-    });
   }, []);
 
   const deleteProject = useCallback((id: string) => {
-    const projectToDelete = projects.find(p => p.id === id);
     setProjects(prev => prev.filter(p => p.id !== id));
-    toast({
-      title: "Project deleted",
-      description: `${projectToDelete?.title || "Project"} has been deleted.`,
-      variant: "destructive",
-    });
-  }, [projects]);
+  }, []);
 
   const toggleTagSelection = useCallback((tag: string) => {
     setSelectedTags(prev => 
@@ -169,16 +158,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         deleteProject,
         setSearchQuery,
         setSelectedCategory,
-        toggleTagSelection
+        toggleTagSelection,
+        refreshProjects: fetchProjects,
+        isLoading
       }}
     >
-      {isLoading ? (
-        <div className="flex justify-center items-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hexa-red"></div>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </ProjectContext.Provider>
   );
 };
