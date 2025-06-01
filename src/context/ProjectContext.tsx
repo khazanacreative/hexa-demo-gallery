@@ -66,23 +66,16 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         setProjects(fetchedProjects);
       } else {
         console.log('No projects found in database, using initial data');
-        // Convert the initial projects to have UUID format IDs
         const projectsWithUuids = initialProjects.map(p => ({
           ...p,
-          id: crypto.randomUUID(), // Generate proper UUIDs instead of simple strings
+          id: crypto.randomUUID(),
           features: p.features || []
         }));
         setProjects(projectsWithUuids);
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load projects data",
-        variant: "destructive"
-      });
       
-      // Fallback to mock data
       const projectsWithUuids = initialProjects.map(p => ({
         ...p,
         id: crypto.randomUUID(),
@@ -97,7 +90,6 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchProjects();
     
-    // Listen for changes in the projects table
     const projectsSubscription = supabase
       .channel('projects_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, (payload) => {
@@ -112,16 +104,19 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchProjects]);
 
   const addProject = useCallback((project: Project) => {
+    console.log('Adding project to context:', project);
     setProjects(prev => [project, ...prev]);
   }, []);
 
   const updateProject = useCallback((updatedProject: Project) => {
+    console.log('Updating project in context:', updatedProject);
     setProjects(prev => 
       prev.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
   }, []);
 
   const deleteProject = useCallback((id: string) => {
+    console.log('Deleting project from context:', id);
     setProjects(prev => prev.filter(p => p.id !== id));
   }, []);
 

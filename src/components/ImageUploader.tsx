@@ -30,19 +30,16 @@ const ImageUploader = ({
   const { currentUser } = useAuth();
   
   useEffect(() => {
-    // Update preview when currentImageUrl prop changes
     setPreviewUrl(currentImageUrl);
   }, [currentImageUrl]);
   
   const validateFile = (file: File): boolean => {
-    // Check file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
     if (!validTypes.includes(file.type)) {
       setError(`Invalid file type. Allowed types: JPEG, PNG, GIF, WEBP, SVG`);
       return false;
     }
     
-    // Check file size (in bytes)
     const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
     if (file.size > maxSizeInBytes) {
       setError(`File size exceeds the maximum limit of ${maxSizeInMB}MB`);
@@ -62,20 +59,16 @@ const ImageUploader = ({
         throw new Error('You must select an image to upload.');
       }
 
-      // Ensure user is logged in
-      if (!currentUser) {
-        throw new Error('You must be logged in to upload images.');
-      }
+      console.log('Starting image upload, current user:', currentUser);
       
       const file = event.target.files[0];
+      console.log('File selected:', file.name, file.size, file.type);
       
-      // Validate file before upload
       if (!validateFile(file)) {
         setUploading(false);
         return;
       }
       
-      // Create a unique file name to prevent collisions
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
@@ -106,7 +99,6 @@ const ImageUploader = ({
       
       console.log('Public URL:', urlData);
 
-      // Set preview and notify parent component
       setPreviewUrl(urlData.publicUrl);
       onImageUploaded({
         path: data.path,
@@ -135,14 +127,12 @@ const ImageUploader = ({
     }
   };
   
-  // Function to handle direct URL input
   const handleUrlChange = (url: string) => {
     setError(null);
     setPreviewUrl(url);
     onImageUploaded({ path: '', url });
   };
   
-  // Function to handle URL removal
   const handleClearImage = () => {
     setError(null);
     setPreviewUrl('');
@@ -161,9 +151,7 @@ const ImageUploader = ({
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder.svg';
-                if (previewUrl !== '/placeholder.svg') {
-                  console.error('Image failed to load:', previewUrl);
-                }
+                console.error('Image failed to load:', previewUrl);
               }}
             />
           ) : (

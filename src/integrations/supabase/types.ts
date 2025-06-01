@@ -9,95 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      favorites: {
-        Row: {
-          created_at: string | null
-          id: string
-          project_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          project_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          project_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "favorites_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pages: {
-        Row: {
-          content: Json | null
-          created_at: string | null
-          id: string
-          is_published: boolean | null
-          needs_republish: boolean | null
-          slug: string
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          needs_republish?: boolean | null
-          slug: string
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          content?: Json | null
-          created_at?: string | null
-          id?: string
-          is_published?: boolean | null
-          needs_republish?: boolean | null
-          slug?: string
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          name: string
-          role: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id: string
-          name: string
-          role?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          name?: string
-          role?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       projects: {
         Row: {
           category: string | null
@@ -111,7 +22,7 @@ export type Database = {
           tags: string[] | null
           title: string
           updated_at: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           category?: string | null
@@ -125,7 +36,7 @@ export type Database = {
           tags?: string[] | null
           title: string
           updated_at?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           category?: string | null
@@ -139,7 +50,7 @@ export type Database = {
           tags?: string[] | null
           title?: string
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

@@ -5,7 +5,6 @@ import { Edit, Trash2, Shield } from 'lucide-react';
 import { HexaButton } from './ui/hexa-button';
 import { toast } from './ui/use-toast';
 import { useState } from 'react';
-import { useProjects } from '@/context/ProjectContext';
 
 interface ProjectAdminControlsProps {
   project: Project;
@@ -19,10 +18,8 @@ const ProjectAdminControls = ({
   onDelete
 }: ProjectAdminControlsProps) => {
   const { currentUser } = useAuth();
-  const { refreshProjects } = useProjects();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Check if the user is an admin, this is critical for permissions
   const isAdmin = currentUser?.role === 'admin';
 
   if (!isAdmin) return null;
@@ -33,6 +30,7 @@ const ProjectAdminControls = ({
     if (isProcessing) return;
     
     try {
+      console.log('Edit button clicked for project:', project.id);
       if (onEdit) {
         onEdit(project);
       }
@@ -43,9 +41,6 @@ const ProjectAdminControls = ({
         description: "Failed to edit project. Please try again.",
         variant: "destructive"
       });
-      
-      // Try to refresh projects to sync with the database
-      await refreshProjects();
     }
   };
 
@@ -56,6 +51,7 @@ const ProjectAdminControls = ({
     
     setIsProcessing(true);
     try {
+      console.log('Delete button clicked for project:', project.id);
       if (onDelete) {
         onDelete(project);
       }
@@ -66,9 +62,6 @@ const ProjectAdminControls = ({
         description: "Failed to delete project. Please try again.",
         variant: "destructive"
       });
-      
-      // Try to refresh projects to sync with the database
-      await refreshProjects();
     } finally {
       setIsProcessing(false);
     }
@@ -84,7 +77,7 @@ const ProjectAdminControls = ({
       <HexaButton 
         variant="hexa" 
         size="sm"
-        className="w-8 h-8 p-0 flex items-center justify-center rounded-full"
+        className="w-8 h-8 p-0 flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600"
         onClick={handleEdit}
         disabled={isProcessing}
       >
