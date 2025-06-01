@@ -60,10 +60,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return localStorage.getItem('hexa_current_user') !== null;
   });
 
+  // Save users to localStorage whenever users array changes
   useEffect(() => {
     localStorage.setItem('hexa_users', JSON.stringify(users));
   }, [users]);
   
+  // Save current user to localStorage whenever currentUser changes
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('hexa_current_user', JSON.stringify(currentUser));
@@ -88,8 +90,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setCurrentUser(authUser);
           setIsAuthenticated(true);
         } else {
-          setCurrentUser(null);
-          setIsAuthenticated(false);
+          // Only clear auth if we don't have a local user
+          const localUser = localStorage.getItem('hexa_current_user');
+          if (!localUser) {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          }
         }
       }
     );
@@ -112,8 +118,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log('Attempting login for:', email);
+    
+    // First check local users (for demo purposes)
+    const localUser = users.find(u => u.email === email && u.password === password);
+    
+    if (localUser) {
+      console.log('Local user found:', localUser);
+      const { password: _, ...userWithoutPassword } = localUser;
+      setCurrentUser(localUser);
+      setIsAuthenticated(true);
+      return true;
+    }
+
+    // Try Supabase auth as fallback
     try {
-      // Try Supabase auth first
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -121,34 +140,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (data.user && !error) {
         console.log('Logged in with Supabase:', data.user);
-        return true;
-      }
-
-      // Fallback to local auth for existing users
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        const { password, ...userWithoutPassword } = user;
-        setCurrentUser(user);
+        const authUser: AuthUser = {
+          id: data.user.id,
+          name: data.user.user_metadata?.name || data.user.email || 'User',
+          email: data.user.email || '',
+          role: data.user.user_metadata?.role || 'user'
+        };
+        setCurrentUser(authUser);
         setIsAuthenticated(true);
         return true;
       }
-      
-      return false;
     } catch (error) {
-      console.error('Login error:', error);
-      
-      // Fallback to local auth
-      const user = users.find(u => u.email === email && u.password === password);
-      
-      if (user) {
-        setCurrentUser(user);
-        setIsAuthenticated(true);
-        return true;
-      }
-      
-      return false;
+      console.error('Supabase login error:', error);
     }
+    
+    console.log('Login failed for:', email);
+    return false;
   };
 
   const logout = async () => {

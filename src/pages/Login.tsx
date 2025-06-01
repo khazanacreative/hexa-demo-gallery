@@ -19,28 +19,32 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    console.log('Login attempt for:', email);
+    
     try {
       const success = await login(email, password);
+      console.log('Login result:', success);
+      
       if (success) {
         toast({
-          title: "Login successful",
-          description: "Welcome back!",
+          title: "Login berhasil",
+          description: "Selamat datang kembali!",
         });
         navigate('/');
       } else {
         toast({
-          title: "Login failed",
-          description: "Invalid email or password",
+          title: "Login gagal",
+          description: "Email atau password tidak valid",
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
-        title: "Login error",
-        description: "An error occurred during login",
+        title: "Error login",
+        description: "Terjadi kesalahan saat login",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +57,7 @@ const Login = () => {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-hexa-red to-hexa-dark-red bg-clip-text text-transparent">
             Galeri Hexa
           </h1>
-          <p className="mt-2 text-gray-600">Sign in to access the application</p>
+          <p className="mt-2 text-gray-600">Masuk untuk mengakses aplikasi</p>
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -62,7 +66,7 @@ const Login = () => {
               <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <Input
                 type="email"
-                placeholder="Email address"
+                placeholder="Alamat email"
                 className="pl-10"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -88,11 +92,11 @@ const Login = () => {
             className="w-full bg-gradient-to-r from-hexa-red to-hexa-dark-red hover:opacity-90"
             disabled={isLoading}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? 'Sedang masuk...' : 'Masuk'}
           </Button>
           
           <div className="text-center text-sm text-gray-500 mt-4">
-            <p>Demo credentials:</p>
+            <p>Kredensial demo:</p>
             <p>Admin: admin@example.com / password</p>
             <p>User: user@example.com / password</p>
           </div>
