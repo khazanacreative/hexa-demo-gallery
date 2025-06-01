@@ -36,6 +36,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsLoading(true);
       console.log('Fetching projects from database...');
+      console.log('Current user in fetchProjects:', currentUser);
       
       const { data, error } = await supabase
         .from('projects')
@@ -44,7 +45,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) {
         console.error('Supabase error:', error);
-        throw error;
+        // Fallback to initial projects if database fails
+        const projectsWithUuids = initialProjects.map(p => ({
+          ...p,
+          id: crypto.randomUUID(),
+          features: p.features || []
+        }));
+        setProjects(projectsWithUuids);
+        return;
       }
       
       console.log('Fetched projects:', data?.length || 0);
@@ -85,7 +93,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     fetchProjects();

@@ -69,6 +69,7 @@ const ProjectGallery = () => {
     setIsSubmitting(true);
     try {
       console.log('Adding project:', projectData);
+      console.log('Current user:', currentUser);
       
       // Check if the user is logged in
       if (!currentUser?.id) {
@@ -111,15 +112,15 @@ const ProjectGallery = () => {
 
         addProject(newProject);
         toast({
-          title: "Project added",
-          description: `${newProject.title} has been added successfully.`,
+          title: "Project berhasil ditambahkan",
+          description: `${newProject.title} telah berhasil ditambahkan.`,
         });
       }
     } catch (error) {
       console.error('Error adding project:', error);
       toast({
         title: "Error",
-        description: "Failed to add project. Please try again.",
+        description: "Gagal menambahkan project. Silakan coba lagi.",
         variant: "destructive"
       });
     } finally {
@@ -136,6 +137,7 @@ const ProjectGallery = () => {
     setIsSubmitting(true);
     try {
       console.log('Updating project with ID:', updatedProject.id);
+      console.log('Current user:', currentUser);
 
       const { error } = await supabase
         .from('projects')
@@ -158,15 +160,15 @@ const ProjectGallery = () => {
 
       updateProject(updatedProject);
       toast({
-        title: "Project updated",
-        description: `${updatedProject.title} has been updated successfully.`,
+        title: "Project berhasil diupdate",
+        description: `${updatedProject.title} telah berhasil diupdate.`,
       });
 
     } catch (error) {
       console.error('Error updating project:', error);
       toast({
         title: "Error",
-        description: "Failed to update project. Please try again.",
+        description: "Gagal mengupdate project. Silakan coba lagi.",
         variant: "destructive"
       });
     } finally {
@@ -183,6 +185,7 @@ const ProjectGallery = () => {
     setIsSubmitting(true);
     try {
       console.log('Deleting project with ID:', projectToDelete.id);
+      console.log('Current user:', currentUser);
 
       const { error } = await supabase
         .from('projects')
@@ -196,15 +199,15 @@ const ProjectGallery = () => {
 
       deleteProject(projectToDelete.id);
       toast({
-        title: "Project deleted",
-        description: "Project has been deleted successfully.",
+        title: "Project berhasil dihapus",
+        description: "Project telah berhasil dihapus.",
       });
       
     } catch (error) {
       console.error('Error deleting project:', error);
       toast({
         title: "Error",
-        description: "Failed to delete project. Please try again.",
+        description: "Gagal menghapus project. Silakan coba lagi.",
         variant: "destructive"
       });
     } finally {

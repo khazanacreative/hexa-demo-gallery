@@ -30,14 +30,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const initialUsers: AuthUser[] = [
   {
-    id: '1',
+    id: 'c07e6ba2-a252-4f7c-a0f8-0ac7dbe433d5',
     name: 'Admin User',
     email: 'admin@example.com',
     password: 'password',
     role: 'admin',
   },
   {
-    id: '2',
+    id: 'ef13c84c-195d-44ca-bf4a-8166500f1b3c',
     name: 'Test User',
     email: 'user@example.com',
     password: 'password',
@@ -125,7 +125,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     if (localUser) {
       console.log('Local user found:', localUser);
-      const { password: _, ...userWithoutPassword } = localUser;
       setCurrentUser(localUser);
       setIsAuthenticated(true);
       return true;
