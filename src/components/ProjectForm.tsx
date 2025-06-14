@@ -49,7 +49,7 @@ const ProjectForm = ({
       screenshots: ['/placeholder.svg'],
       demoUrl: 'https://example.com',
       category: 'Web App',
-      tags: [],
+      tags: [], // Default tidak ada tag
       features: [],
     },
   });
@@ -289,7 +289,7 @@ const ProjectForm = ({
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 mb-1">Common tags:</p>
                   <div className="flex flex-wrap gap-1">
-                    {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 10).map(tag => (
+                    {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 8).map(tag => (
                       <button
                         key={tag}
                         type="button"

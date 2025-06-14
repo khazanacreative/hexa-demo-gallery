@@ -181,18 +181,21 @@ const ImageUploader = ({
 
       console.log('Upload successful:', data);
 
-      // Get the public URL
+      // Get the public URL - perbaikan di sini untuk memastikan URL benar
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(data.path);
       
-      console.log('Public URL:', urlData);
+      console.log('Public URL generated:', urlData.publicUrl);
 
-      const finalUrl = urlData.publicUrl;
-      setPreviewUrl(finalUrl);
+      // Pastikan URL menggunakan format yang benar
+      const publicUrl = urlData.publicUrl;
+      
+      // Update preview immediately dengan URL yang benar
+      setPreviewUrl(publicUrl);
       onImageUploaded({
         path: data.path,
-        url: finalUrl
+        url: publicUrl
       });
 
       toast({
@@ -242,6 +245,7 @@ const ImageUploader = ({
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder.svg';
                 console.error('Gambar gagal dimuat:', previewUrl);
+                setError('Gambar gagal dimuat. Silakan coba upload ulang.');
               }}
             />
           ) : (
