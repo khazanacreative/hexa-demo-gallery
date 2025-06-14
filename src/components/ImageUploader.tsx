@@ -36,13 +36,13 @@ const ImageUploader = ({
   const validateFile = (file: File): boolean => {
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
     if (!validTypes.includes(file.type)) {
-      setError(`Invalid file type. Allowed types: JPEG, PNG, GIF, WEBP, SVG`);
+      setError(`Tipe file tidak valid. Format yang diizinkan: JPEG, PNG, GIF, WEBP, SVG`);
       return false;
     }
     
     const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
     if (file.size > maxSizeInBytes) {
-      setError(`File size exceeds the maximum limit of ${maxSizeInMB}MB`);
+      setError(`Ukuran file melebihi batas maksimal ${maxSizeInMB}MB`);
       return false;
     }
     
@@ -56,25 +56,43 @@ const ImageUploader = ({
       setUploading(true);
       
       if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
+        throw new Error('Anda harus memilih gambar untuk diupload.');
       }
 
-      console.log('Starting image upload, current user:', currentUser);
+      console.log('Memulai upload gambar, user saat ini:', currentUser);
       
       const file = event.target.files[0];
-      console.log('File selected:', file.name, file.size, file.type);
+      console.log('File dipilih:', file.name, file.size, file.type);
       
       if (!validateFile(file)) {
         setUploading(false);
         return;
       }
       
-      const fileExt = file.name.split('.').pop();
+      // Create unique filename
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
-      console.log(`Uploading image to: ${bucketName}/${filePath}`);
+      console.log(`Mengupload gambar ke: ${bucketName}/${filePath}`);
       
+      // First, check if bucket exists and is accessible
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error('Error checking buckets:', bucketsError);
+        throw new Error('Gagal mengakses storage. Silakan coba lagi.');
+      }
+      
+      const targetBucket = buckets?.find(bucket => bucket.id === bucketName);
+      if (!targetBucket) {
+        console.error(`Bucket ${bucketName} tidak ditemukan`);
+        throw new Error('Storage bucket tidak tersedia. Silakan hubungi administrator.');
+      }
+      
+      console.log('Bucket ditemukan:', targetBucket);
+      
+      // Upload the file
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
@@ -84,38 +102,50 @@ const ImageUploader = ({
 
       if (error) {
         console.error('Storage error details:', error);
-        throw error;
+        
+        // Handle specific error cases
+        if (error.message.includes('row-level security')) {
+          throw new Error('Anda tidak memiliki izin untuk mengupload file. Silakan login terlebih dahulu.');
+        } else if (error.message.includes('file size')) {
+          throw new Error(`Ukuran file terlalu besar. Maksimal ${maxSizeInMB}MB.`);
+        } else if (error.message.includes('file type')) {
+          throw new Error('Tipe file tidak didukung. Gunakan format JPEG, PNG, GIF, WEBP, atau SVG.');
+        } else {
+          throw new Error(`Error upload: ${error.message}`);
+        }
       }
 
       if (!data) {
-        throw new Error('Upload failed - no data returned');
+        throw new Error('Upload gagal - tidak ada data yang dikembalikan');
       }
 
-      console.log('Upload successful:', data);
+      console.log('Upload berhasil:', data);
 
+      // Get the public URL
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(data.path);
       
       console.log('Public URL:', urlData);
 
-      setPreviewUrl(urlData.publicUrl);
+      const finalUrl = urlData.publicUrl;
+      setPreviewUrl(finalUrl);
       onImageUploaded({
         path: data.path,
-        url: urlData.publicUrl
+        url: finalUrl
       });
 
       toast({
-        title: "Success",
-        description: "Image uploaded successfully",
+        title: "Berhasil",
+        description: "Gambar berhasil diupload",
       });
 
     } catch (error: any) {
       console.error('Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload image";
+      const errorMessage = error instanceof Error ? error.message : "Gagal mengupload gambar";
       setError(errorMessage);
       toast({
-        title: "Upload failed",
+        title: "Upload gagal",
         description: errorMessage,
         variant: "destructive"
       });
@@ -151,7 +181,7 @@ const ImageUploader = ({
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/placeholder.svg';
-                console.error('Image failed to load:', previewUrl);
+                console.error('Gambar gagal dimuat:', previewUrl);
               }}
             />
           ) : (
@@ -164,7 +194,7 @@ const ImageUploader = ({
         <input
           type="text"
           className="flex-1 px-3 py-2 border border-gray-200 rounded"
-          placeholder="Image URL or upload"
+          placeholder="URL gambar atau upload"
           value={previewUrl}
           onChange={(e) => handleUrlChange(e.target.value)}
         />
@@ -176,6 +206,7 @@ const ImageUploader = ({
             size="icon" 
             className="flex-shrink-0"
             disabled={uploading}
+            title="Upload gambar"
           >
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
           </HexaButton>
@@ -185,6 +216,7 @@ const ImageUploader = ({
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={uploadImage}
             disabled={uploading}
+            title="Pilih gambar untuk diupload"
           />
         </div>
         
@@ -195,6 +227,7 @@ const ImageUploader = ({
             size="icon"
             className="flex-shrink-0"
             onClick={handleClearImage}
+            title="Hapus gambar"
           >
             <X size={16} />
           </HexaButton>
@@ -207,6 +240,10 @@ const ImageUploader = ({
           <span>{error}</span>
         </div>
       )}
+      
+      <div className="text-xs text-gray-500">
+        Format yang didukung: JPEG, PNG, GIF, WEBP, SVG (max {maxSizeInMB}MB)
+      </div>
     </div>
   );
 };
