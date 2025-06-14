@@ -27,11 +27,71 @@ const ImageUploader = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
+  const [bucketExists, setBucketExists] = useState<boolean | null>(null);
   const { currentUser } = useAuth();
   
   useEffect(() => {
     setPreviewUrl(currentImageUrl);
   }, [currentImageUrl]);
+
+  useEffect(() => {
+    checkBucketExists();
+  }, [bucketName]);
+
+  const checkBucketExists = async () => {
+    try {
+      console.log('Checking if bucket exists:', bucketName);
+      const { data: buckets, error } = await supabase.storage.listBuckets();
+      
+      if (error) {
+        console.error('Error checking buckets:', error);
+        setBucketExists(false);
+        return;
+      }
+
+      const exists = buckets?.some(bucket => bucket.id === bucketName) || false;
+      console.log('Bucket exists:', exists, 'Available buckets:', buckets?.map(b => b.id));
+      setBucketExists(exists);
+
+      if (!exists) {
+        console.log('Bucket not found, attempting to create it...');
+        await createBucket();
+      }
+    } catch (error) {
+      console.error('Error in checkBucketExists:', error);
+      setBucketExists(false);
+    }
+  };
+
+  const createBucket = async () => {
+    try {
+      console.log('Creating bucket:', bucketName);
+      const { data, error } = await supabase.storage.createBucket(bucketName, {
+        public: true,
+        fileSizeLimit: maxSizeInMB * 1024 * 1024,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+      });
+
+      if (error) {
+        console.error('Error creating bucket:', error);
+        
+        // Check if bucket already exists
+        if (error.message?.includes('already exists')) {
+          console.log('Bucket already exists, setting as available');
+          setBucketExists(true);
+          return;
+        }
+        
+        throw error;
+      }
+
+      console.log('Bucket created successfully:', data);
+      setBucketExists(true);
+    } catch (error) {
+      console.error('Failed to create bucket:', error);
+      setBucketExists(false);
+    }
+  };
   
   const validateFile = (file: File): boolean => {
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
@@ -59,14 +119,25 @@ const ImageUploader = ({
         throw new Error('Anda harus memilih gambar untuk diupload.');
       }
 
-      console.log('Memulai upload gambar, user saat ini:', currentUser);
+      console.log('Starting upload process, current user:', currentUser);
       
       const file = event.target.files[0];
-      console.log('File dipilih:', file.name, file.size, file.type);
+      console.log('Selected file:', file.name, file.size, file.type);
       
       if (!validateFile(file)) {
         setUploading(false);
         return;
+      }
+
+      // Check if bucket exists before uploading
+      if (bucketExists === false) {
+        console.log('Bucket does not exist, trying to create it...');
+        await createBucket();
+        
+        // Recheck bucket status
+        if (bucketExists === false) {
+          throw new Error('Storage bucket tidak tersedia dan tidak dapat dibuat. Silakan hubungi administrator.');
+        }
       }
       
       // Create unique filename
@@ -74,23 +145,7 @@ const ImageUploader = ({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
-      console.log(`Mengupload gambar ke: ${bucketName}/${filePath}`);
-      
-      // First, check if bucket exists and is accessible
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error('Error checking buckets:', bucketsError);
-        throw new Error('Gagal mengakses storage. Silakan coba lagi.');
-      }
-      
-      const targetBucket = buckets?.find(bucket => bucket.id === bucketName);
-      if (!targetBucket) {
-        console.error(`Bucket ${bucketName} tidak ditemukan`);
-        throw new Error('Storage bucket tidak tersedia. Silakan hubungi administrator.');
-      }
-      
-      console.log('Bucket ditemukan:', targetBucket);
+      console.log(`Uploading image to: ${bucketName}/${filePath}`);
       
       // Upload the file
       const { data, error } = await supabase.storage
@@ -110,6 +165,11 @@ const ImageUploader = ({
           throw new Error(`Ukuran file terlalu besar. Maksimal ${maxSizeInMB}MB.`);
         } else if (error.message.includes('file type')) {
           throw new Error('Tipe file tidak didukung. Gunakan format JPEG, PNG, GIF, WEBP, atau SVG.');
+        } else if (error.message.includes('not found')) {
+          // Bucket might have been deleted, try to recreate
+          console.log('Bucket not found during upload, recreating...');
+          await createBucket();
+          throw new Error('Storage bucket tidak ditemukan. Silakan coba lagi.');
         } else {
           throw new Error(`Error upload: ${error.message}`);
         }
@@ -119,7 +179,7 @@ const ImageUploader = ({
         throw new Error('Upload gagal - tidak ada data yang dikembalikan');
       }
 
-      console.log('Upload berhasil:', data);
+      console.log('Upload successful:', data);
 
       // Get the public URL
       const { data: urlData } = supabase.storage
@@ -205,8 +265,8 @@ const ImageUploader = ({
             variant="outline" 
             size="icon" 
             className="flex-shrink-0"
-            disabled={uploading}
-            title="Upload gambar"
+            disabled={uploading || bucketExists === false}
+            title={bucketExists === false ? "Storage tidak tersedia" : "Upload gambar"}
           >
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
           </HexaButton>
@@ -215,7 +275,7 @@ const ImageUploader = ({
             accept="image/*"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={uploadImage}
-            disabled={uploading}
+            disabled={uploading || bucketExists === false}
             title="Pilih gambar untuk diupload"
           />
         </div>
@@ -238,6 +298,13 @@ const ImageUploader = ({
         <div className="text-red-500 text-xs flex items-center gap-1">
           <AlertCircle size={12} />
           <span>{error}</span>
+        </div>
+      )}
+
+      {bucketExists === false && (
+        <div className="text-amber-600 text-xs flex items-center gap-1">
+          <AlertCircle size={12} />
+          <span>Storage bucket tidak tersedia. Upload dinonaktifkan sementara.</span>
         </div>
       )}
       
