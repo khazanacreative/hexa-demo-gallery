@@ -1,11 +1,13 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
+type CategoryPermission = 'web-app' | 'mobile-app' | 'website';
+
 interface AuthUser extends User {
   email: string;
   password?: string;
+  categoryPermissions?: CategoryPermission[];
 }
 
 interface UserCreationData {
@@ -85,7 +87,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: session.user.id,
             name: session.user.user_metadata?.name || session.user.email || 'User',
             email: session.user.email || '',
-            role: session.user.user_metadata?.role || 'user'
+            role: session.user.user_metadata?.role || 'user',
+            categoryPermissions: session.user.user_metadata?.category_permissions || []
           };
           setCurrentUser(authUser);
           setIsAuthenticated(true);
@@ -107,7 +110,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: session.user.id,
           name: session.user.user_metadata?.name || session.user.email || 'User',
           email: session.user.email || '',
-          role: session.user.user_metadata?.role || 'user'
+          role: session.user.user_metadata?.role || 'user',
+          categoryPermissions: session.user.user_metadata?.category_permissions || []
         };
         setCurrentUser(authUser);
         setIsAuthenticated(true);
@@ -143,7 +147,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: data.user.id,
           name: data.user.user_metadata?.name || data.user.email || 'User',
           email: data.user.email || '',
-          role: data.user.user_metadata?.role || 'user'
+          role: data.user.user_metadata?.role || 'user',
+          categoryPermissions: data.user.user_metadata?.category_permissions || []
         };
         setCurrentUser(authUser);
         setIsAuthenticated(true);

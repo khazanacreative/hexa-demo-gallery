@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -234,59 +233,18 @@ const ProjectGallery = () => {
     }
   };
 
-  // Filter categories and tags based on user permissions
-  const getUserAllowedCategories = () => {
-    if (!currentUser?.categoryPermissions) {
-      return ['Web App', 'Mobile App'];
-    }
-    
-    const categoryMap = {
-      'web-app': 'Web App',
-      'mobile-app': 'Mobile App', 
-      'website': 'Website'
-    };
-    
-    return currentUser.categoryPermissions.map(perm => categoryMap[perm]);
-  };
-
-  const getUserAllowedTags = () => {
-    if (!currentUser?.categoryPermissions) {
-      return [...allTags.webApp, ...allTags.mobileApp];
-    }
-    
-    let allowedTags: string[] = [];
-    currentUser.categoryPermissions.forEach(permission => {
-      switch (permission) {
-        case 'web-app':
-          allowedTags = [...allowedTags, ...allTags.webApp];
-          break;
-        case 'mobile-app':
-          allowedTags = [...allowedTags, ...allTags.mobileApp];
-          break;
-        case 'website':
-          allowedTags = [...allowedTags, ...allTags.website];
-          break;
-      }
-    });
-    
-    return [...new Set(allowedTags)];
-  };
-
-  const allowedCategories = getUserAllowedCategories();
-  const allowedTags = getUserAllowedTags();
-
-  // Filter projects and categories based on user permissions
-  const userFilteredProjects = filteredProjects.filter(project => 
-    allowedCategories.includes(project.category)
-  );
-
+  // Simplified category and tag filtering for basic functionality
   const categories = Array.from(
-    new Set(userFilteredProjects.map(p => p.category).filter(Boolean))
+    new Set(filteredProjects.map(p => p.category).filter(Boolean))
   );
 
-  // Filter tags that appear in visible projects
-  const visibleTags = allowedTags.filter(tag =>
-    userFilteredProjects.some(project => project.tags.includes(tag))
+  // Use all available tags from allTags object
+  const visibleTags = [
+    ...allTags.webApp,
+    ...allTags.mobileApp,
+    ...allTags.website
+  ].filter(tag =>
+    filteredProjects.some(project => project.tags.includes(tag))
   );
 
   return (
@@ -390,7 +348,7 @@ const ProjectGallery = () => {
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {userFilteredProjects.map((project) => (
+        {filteredProjects.map((project) => (
           <ProjectCard 
             key={project.id} 
             project={project} 
@@ -401,7 +359,7 @@ const ProjectGallery = () => {
         ))}
       </div>
       
-      {userFilteredProjects.length === 0 && (
+      {filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No projects found matching the selected filters.</p>
         </div>
