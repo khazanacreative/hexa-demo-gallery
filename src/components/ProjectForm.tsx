@@ -77,8 +77,8 @@ const ProjectForm = ({
     }
   };
 
-  const removeTag = (tag: string) => {
-    setSelectedTags(selectedTags.filter(t => t !== tag));
+  const removeTag = (tagToRemove: string) => {
+    setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
   };
 
   const handleCoverImageUploaded = (result: FileUploadResult) => {

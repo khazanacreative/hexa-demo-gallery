@@ -5,7 +5,6 @@ import { HexaButton } from './ui/hexa-button';
 import { Image, Loader2, X, AlertCircle } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
 
 interface ImageUploaderProps {
   currentImageUrl: string;
@@ -27,7 +26,6 @@ const ImageUploader = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
-  const { currentUser } = useAuth();
   
   useEffect(() => {
     setPreviewUrl(currentImageUrl);
@@ -59,7 +57,7 @@ const ImageUploader = ({
         throw new Error('Anda harus memilih gambar untuk diupload.');
       }
 
-      console.log('Starting upload process, current user:', currentUser);
+      console.log('Starting upload process...');
       
       const file = event.target.files[0];
       console.log('Selected file:', file.name, file.size, file.type);
@@ -76,7 +74,7 @@ const ImageUploader = ({
       
       console.log(`Uploading image to: ${bucketName}/${filePath}`);
       
-      // Upload the file
+      // Upload the file with upsert true to avoid conflicts
       const { data, error } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
