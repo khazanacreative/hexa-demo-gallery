@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useProjects } from '@/context/ProjectContext';
 import { useAuth } from '@/context/AuthContext';
@@ -6,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter } from 'lucide-react';
 import { allTags } from '@/data/mockData';
-import { CategoryPermission } from '@/types';
 
 const ProjectGallery = () => {
   const { projects, searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, selectedTags, toggleTagSelection, isLoading } = useProjects();
@@ -50,6 +50,11 @@ const ProjectGallery = () => {
   const handleCategoryClick = (category: string | null) => {
     setSelectedCategory(category);
     setIsFilterOpen(false);
+  };
+
+  const handleProjectClick = (project: any) => {
+    // Handle project click - you can implement project details modal here
+    console.log('Project clicked:', project);
   };
 
   return (
@@ -152,7 +157,11 @@ const ProjectGallery = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard 
+              key={project.id} 
+              project={project} 
+              onClick={handleProjectClick}
+            />
           ))}
         </div>
       )}
