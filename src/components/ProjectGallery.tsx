@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -13,6 +12,15 @@ import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const ProjectGallery = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -22,6 +30,7 @@ const ProjectGallery = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   
   const { currentUser } = useAuth();
   const { 
@@ -39,6 +48,18 @@ const ProjectGallery = () => {
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
+
+  // Pagination logic
+  const ITEMS_PER_PAGE = 9;
+  const totalPages = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProjects = filteredProjects.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
@@ -243,6 +264,24 @@ const ProjectGallery = () => {
     filteredProjects.some(project => project.tags.includes(tag))
   );
 
+  // Custom search handler that resets pagination
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    handleFilterChange();
+  };
+
+  // Custom category handler that resets pagination
+  const handleCategoryChange = (category: string | null) => {
+    setSelectedCategory(category);
+    handleFilterChange();
+  };
+
+  // Custom tag handler that resets pagination
+  const handleTagToggle = (tag: string) => {
+    toggleTagSelection(tag);
+    handleFilterChange();
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -281,12 +320,12 @@ const ProjectGallery = () => {
             className="pl-10 pr-4 w-full"
             placeholder="Search projects by title, description or tag..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
           {searchQuery && (
             <button 
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              onClick={() => setSearchQuery('')}
+              onClick={() => handleSearchChange('')}
             >
               <X size={18} />
             </button>
@@ -299,7 +338,7 @@ const ProjectGallery = () => {
           variant={selectedCategory === null ? "hexa" : "outline"}
           size="sm"
           className="rounded-full"
-          onClick={() => setSelectedCategory(null)}
+          onClick={() => handleCategoryChange(null)}
         >
           <LayoutGrid size={14} className="mr-1" />
           All
@@ -312,7 +351,7 @@ const ProjectGallery = () => {
               variant={selectedCategory === category ? "hexa" : "outline"}
               size="sm"
               className="rounded-full"
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => handleCategoryChange(category)}
             >
               <Filter size={14} className="mr-1" />
               {category}
@@ -330,7 +369,7 @@ const ProjectGallery = () => {
           {visibleTags.map(tag => (
             <button
               key={tag}
-              onClick={() => toggleTagSelection(tag)}
+              onClick={() => handleTagToggle(tag)}
               className={`px-2 py-1 text-xs rounded-full transition-all ${
                 selectedTags.includes(tag)
                   ? 'bg-hexa-red text-white'
@@ -342,9 +381,15 @@ const ProjectGallery = () => {
           ))}
         </div>
       </div>
+
+      {/* Pagination info */}
+      <div className="mb-4 text-sm text-gray-600 text-center">
+        Showing {startIndex + 1}-{Math.min(endIndex, filteredProjects.length)} of {filteredProjects.length} projects
+        {totalPages > 1 && ` • Page ${currentPage} of ${totalPages}`}
+      </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {paginatedProjects.map((project) => (
           <ProjectCard 
             key={project.id} 
             project={project} 
@@ -358,6 +403,113 @@ const ProjectGallery = () => {
       {filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No projects found matching the selected filters.</p>
+        </div>
+      )}
+
+      {/* Pagination Component */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage > 1) {
+                      setCurrentPage(currentPage - 1);
+                    }
+                  }}
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+              
+              {/* First page */}
+              {currentPage > 3 && (
+                <>
+                  <PaginationItem>
+                    <PaginationLink 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(1);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                  {currentPage > 4 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                </>
+              )}
+
+              {/* Current page and surrounding pages */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => 
+                  page === currentPage || 
+                  page === currentPage - 1 || 
+                  page === currentPage + 1 ||
+                  (currentPage <= 2 && page <= 3) ||
+                  (currentPage >= totalPages - 1 && page >= totalPages - 2)
+                )
+                .map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(page);
+                      }}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))
+              }
+
+              {/* Last page */}
+              {currentPage < totalPages - 2 && (
+                <>
+                  {currentPage < totalPages - 3 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationLink 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setCurrentPage(totalPages);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                </>
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (currentPage < totalPages) {
+                      setCurrentPage(currentPage + 1);
+                    }
+                  }}
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
 
