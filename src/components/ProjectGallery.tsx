@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -238,12 +239,8 @@ const ProjectGallery = () => {
     new Set(filteredProjects.map(p => p.category).filter(Boolean))
   );
 
-  // Use all available tags from allTags object
-  const visibleTags = [
-    ...allTags.webApp,
-    ...allTags.mobileApp,
-    ...allTags.website
-  ].filter(tag =>
+  // Use all available tags from allTags array
+  const visibleTags = allTags.filter(tag =>
     filteredProjects.some(project => project.tags.includes(tag))
   );
 

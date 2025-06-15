@@ -90,42 +90,36 @@ export const users: User[] = [
   }
 ];
 
-export const allTags = {
-  webApp: [
-    "React", 
-    "Vue.js", 
-    "Angular", 
-    "Node.js", 
-    "Express", 
-    "MongoDB", 
-    "PostgreSQL", 
-    "Firebase", 
-    "NextJS", 
-    "Tailwind CSS", 
-    "Material-UI", 
-    "Bootstrap", 
-    "TypeScript", 
-    "JavaScript", 
-    "GraphQL", 
-    "REST API", 
-    "Redux"
-  ],
-  mobileApp: [
-    "React Native", 
-    "Flutter", 
-    "Swift",
-    "TypeScript", 
-    "JavaScript",
-    "Firebase",
-    "Redux"
-  ],
-  website: [
-    "HTML",
-    "CSS", 
-    "JavaScript", 
-    "WordPress",
-    "Bootstrap",
-    "Tailwind CSS",
-    "jQuery"
-  ]
-};
+export const allTags = [
+  "React", 
+  "Vue.js", 
+  "Angular", 
+  "Node.js", 
+  "Express", 
+  "MongoDB", 
+  "PostgreSQL", 
+  "Firebase", 
+  "NextJS", 
+  "Tailwind CSS", 
+  "Material-UI", 
+  "Bootstrap", 
+  "TypeScript", 
+  "JavaScript", 
+  "GraphQL", 
+  "REST API", 
+  "Redux",
+  "React Native", 
+  "Flutter", 
+  "Swift",
+  "HTML",
+  "CSS", 
+  "WordPress",
+  "jQuery",
+  "Expo",
+  "Chart.js",
+  "Google Maps API",
+  "OpenWeatherMap API",
+  "Spoonacular API",
+  "Chakra UI",
+  "Stripe"
+];
