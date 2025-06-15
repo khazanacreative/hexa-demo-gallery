@@ -136,7 +136,24 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
+  const getUserAllowedCategories = useCallback(() => {
+    if (!currentUser?.categoryPermissions) {
+      return ['Web App', 'Mobile App']; // Default permissions
+    }
+    
+    const categoryMap = {
+      'web-app': 'Web App',
+      'mobile-app': 'Mobile App', 
+      'website': 'Website'
+    };
+    
+    return currentUser.categoryPermissions.map(perm => categoryMap[perm]);
+  }, [currentUser]);
+
   const filteredProjects = projects.filter(project => {
+    const allowedCategories = getUserAllowedCategories();
+    const categoryAllowed = allowedCategories.includes(project.category);
+    
     const matchesSearch = searchQuery === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,13 +164,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     const matchesTags = selectedTags.length === 0 || 
       selectedTags.every(tag => project.tags.includes(tag));
     
-    return matchesSearch && matchesCategory && matchesTags;
+    return categoryAllowed && matchesSearch && matchesCategory && matchesTags;
   });
 
   return (
     <ProjectContext.Provider 
       value={{ 
-        projects, 
+        projects: filteredProjects, // Return filtered projects as base projects
         filteredProjects,
         searchQuery,
         selectedCategory,

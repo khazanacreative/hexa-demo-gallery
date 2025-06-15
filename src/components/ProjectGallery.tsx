@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -39,6 +38,43 @@ const ProjectGallery = () => {
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
+
+  const getUserAllowedCategories = () => {
+    if (!currentUser?.categoryPermissions) {
+      return ['Web App', 'Mobile App']; // Default permissions
+    }
+    
+    const categoryMap = {
+      'web-app': 'Web App',
+      'mobile-app': 'Mobile App', 
+      'website': 'Website'
+    };
+    
+    return currentUser.categoryPermissions.map(perm => categoryMap[perm]);
+  };
+
+  const getAllowedTags = () => {
+    if (!currentUser?.categoryPermissions) {
+      return allTags.webApp.concat(allTags.mobileApp);
+    }
+    
+    let allowedTags: string[] = [];
+    currentUser.categoryPermissions.forEach(permission => {
+      switch (permission) {
+        case 'web-app':
+          allowedTags = allowedTags.concat(allTags.webApp);
+          break;
+        case 'mobile-app':
+          allowedTags = allowedTags.concat(allTags.mobileApp);
+          break;
+        case 'website':
+          allowedTags = allowedTags.concat(allTags.website);
+          break;
+      }
+    });
+    
+    return [...new Set(allowedTags)]; // Remove duplicates
+  };
 
   const handleProjectClick = (project: Project) => {
     setSelectedProject(project);
@@ -126,7 +162,6 @@ const ProjectGallery = () => {
     } finally {
       setIsSubmitting(false);
       setIsAddFormOpen(false);
-      // Refresh projects to ensure data consistency
       refreshProjects();
     }
   };
@@ -174,7 +209,6 @@ const ProjectGallery = () => {
     } finally {
       setIsSubmitting(false);
       setIsEditFormOpen(false);
-      // Refresh projects to ensure data consistency
       refreshProjects();
     }
   };
@@ -213,14 +247,16 @@ const ProjectGallery = () => {
     } finally {
       setIsSubmitting(false);
       setIsDeleteDialogOpen(false);
-      // Refresh projects to ensure data consistency
       refreshProjects();
     }
   };
 
+  const allowedCategories = getUserAllowedCategories();
   const categories = Array.from(
-    new Set(filteredProjects.map(p => p.category).filter(Boolean))
+    new Set(filteredProjects.map(p => p.category).filter(cat => allowedCategories.includes(cat)))
   );
+  
+  const allowedTagsList = getAllowedTags();
 
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6">
@@ -306,7 +342,7 @@ const ProjectGallery = () => {
           <span className="text-sm font-medium">Tags:</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {allTags.map(tag => (
+          {allowedTagsList.map(tag => (
             <button
               key={tag}
               onClick={() => toggleTagSelection(tag)}

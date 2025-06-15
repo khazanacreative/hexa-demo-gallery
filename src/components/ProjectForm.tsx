@@ -10,6 +10,7 @@ import { X, Plus, Link } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
 
 type ProjectFormValues = Omit<Project, 'id' | 'createdAt'>;
 
@@ -40,6 +41,47 @@ const ProjectForm = ({
     defaultValues?.features || []
   );
   const [newFeature, setNewFeature] = useState('');
+  const { currentUser } = useAuth();
+
+  const getUserAllowedCategories = () => {
+    if (!currentUser?.categoryPermissions) {
+      return [
+        { value: 'Web App', label: 'Web App' },
+        { value: 'Mobile App', label: 'Mobile App' }
+      ];
+    }
+    
+    const categoryMap = {
+      'web-app': { value: 'Web App', label: 'Web App' },
+      'mobile-app': { value: 'Mobile App', label: 'Mobile App' },
+      'website': { value: 'Website', label: 'Website' }
+    };
+    
+    return currentUser.categoryPermissions.map(perm => categoryMap[perm]);
+  };
+
+  const getAllowedTags = () => {
+    if (!currentUser?.categoryPermissions) {
+      return allTags.webApp.concat(allTags.mobileApp);
+    }
+    
+    let allowedTags: string[] = [];
+    currentUser.categoryPermissions.forEach(permission => {
+      switch (permission) {
+        case 'web-app':
+          allowedTags = allowedTags.concat(allTags.webApp);
+          break;
+        case 'mobile-app':
+          allowedTags = allowedTags.concat(allTags.mobileApp);
+          break;
+        case 'website':
+          allowedTags = allowedTags.concat(allTags.website);
+          break;
+      }
+    });
+    
+    return [...new Set(allowedTags)];
+  };
 
   const form = useForm<ProjectFormValues>({
     defaultValues: defaultValues || {
@@ -48,7 +90,7 @@ const ProjectForm = ({
       coverImage: '/placeholder.svg',
       screenshots: ['/placeholder.svg'],
       demoUrl: 'https://example.com',
-      category: 'Web App',
+      category: getUserAllowedCategories()[0]?.value || 'Web App',
       tags: [], // Default tidak ada tag
       features: [],
     },
@@ -112,6 +154,9 @@ const ProjectForm = ({
     });
     onClose();
   };
+
+  const allowedCategories = getUserAllowedCategories();
+  const allowedTagsList = getAllowedTags();
 
   return (
     <Dialog open={isOpen} onOpenChange={isOpen => !isOpen && onClose()}>
@@ -200,10 +245,11 @@ const ProjectForm = ({
                         className="w-full p-2 border border-gray-200 rounded-md"
                         {...field}
                       >
-                        <option value="Web App">Web App</option>
-                        <option value="Mobile App">Mobile App</option>
-                        <option value="Website">Website</option>
-                        <option value="Desktop App">Desktop App</option>
+                        {allowedCategories.map(category => (
+                          <option key={category.value} value={category.value}>
+                            {category.label}
+                          </option>
+                        ))}
                       </select>
                     </FormControl>
                     <FormMessage />
@@ -287,9 +333,9 @@ const ProjectForm = ({
                   </HexaButton>
                 </div>
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500 mb-1">Common tags:</p>
+                  <p className="text-sm text-gray-500 mb-1">Available tags:</p>
                   <div className="flex flex-wrap gap-1">
-                    {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 8).map(tag => (
+                    {allowedTagsList.filter(tag => !selectedTags.includes(tag)).slice(0, 12).map(tag => (
                       <button
                         key={tag}
                         type="button"
