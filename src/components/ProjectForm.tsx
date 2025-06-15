@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,7 +11,7 @@ import { X, Plus, Link } from 'lucide-react';
 import { allTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/context/AuthContext';
 
 type ProjectFormValues = Omit<Project, 'id' | 'createdAt'>;
 
@@ -91,7 +92,7 @@ const ProjectForm = ({
       screenshots: ['/placeholder.svg'],
       demoUrl: 'https://example.com',
       category: getUserAllowedCategories()[0]?.value || 'Web App',
-      tags: [], // Default tidak ada tag
+      tags: [],
       features: [],
     },
   });

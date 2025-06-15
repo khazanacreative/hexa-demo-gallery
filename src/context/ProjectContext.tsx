@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Project } from '@/types';
+import { Project, CategoryPermission } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -141,7 +141,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       return ['Web App', 'Mobile App']; // Default permissions
     }
     
-    const categoryMap = {
+    const categoryMap: Record<CategoryPermission, string> = {
       'web-app': 'Web App',
       'mobile-app': 'Mobile App', 
       'website': 'Website'

@@ -1,15 +1,10 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User, UserRole } from '@/types';
+import { User, UserRole, CategoryPermission } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-
-interface CategoryPermission {
-  name: string;
-}
 
 interface AuthUser extends User {
   email: string;
   password?: string;
-  categoryPermissions?: CategoryPermission[];
 }
 
 interface UserCreationData {
