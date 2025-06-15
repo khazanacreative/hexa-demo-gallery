@@ -1,7 +1,18 @@
 
 import { Github, Globe, Heart } from 'lucide-react';
+import { useProjects } from '@/context/ProjectContext';
+import { useAuth } from '@/context/AuthContext';
 
 const Footer = () => {
+  const { projects } = useProjects();
+  const { users } = useAuth();
+  
+  // Hitung jumlah kategori unik dari projects
+  const uniqueCategories = [...new Set(projects.map(project => project.category))].filter(Boolean).length;
+  
+  // Hitung jumlah user roles unik
+  const uniqueRoles = [...new Set(users.map(user => user.role))].length;
+  
   return (
     <footer className="bg-gray-900 text-gray-300 py-8 px-4">
       <div className="container mx-auto">
@@ -28,15 +39,15 @@ const Footer = () => {
           <div className="flex items-center gap-8 mb-4 md:mb-0">
             <div className="flex flex-col items-center">
               <span className="text-sm text-gray-400">Projects</span>
-              <span className="font-semibold">6</span>
+              <span className="font-semibold">{projects.length}</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-sm text-gray-400">Categories</span>
-              <span className="font-semibold">3</span>
+              <span className="font-semibold">{uniqueCategories}</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-sm text-gray-400">User Roles</span>
-              <span className="font-semibold">2</span>
+              <span className="font-semibold">{uniqueRoles}</span>
             </div>
           </div>
           
