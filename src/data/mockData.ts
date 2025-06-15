@@ -110,18 +110,7 @@ export const allTags = [
   "Redux", 
   "React Native", 
   "Flutter", 
-  "Swift",
-  "WordPress",
-  "Vite",
-  "PHP",
-  "Laravel",
-  "Drupal",
-  "Joomla",
-  "Shopify",
-  "WooCommerce",
-  "Elementor",
-  "ACF",
-  "Custom Post Types"
+  "Swift"
 ];
 
 // Tag suggestions by category for better relevance
@@ -142,17 +131,11 @@ export const tagSuggestionsByCategory = {
     "Geolocation", "Biometric", "App Store", "Play Store"
   ],
   "Website": [
-    "WordPress", "Shopify", "Webflow", "Squarespace", "Wix",
-    "HTML", "CSS", "JavaScript", "PHP", "MySQL",
-    "Vite", "Webpack", "Parcel", "Gulp", "SASS", "LESS",
-    "jQuery", "Bootstrap", "Tailwind CSS", "Foundation",
-    "Laravel", "CodeIgniter", "Symfony", "CakePHP",
-    "Drupal", "Joomla", "Magento", "PrestaShop",
-    "WooCommerce", "Elementor", "Gutenberg", "ACF",
-    "Custom Post Types", "REST API", "GraphQL",
-    "SEO", "Google Analytics", "GTM", "Schema Markup",
-    "Responsive Design", "Cross Browser", "Performance",
-    "CDN", "Caching", "SSL", "Security"
+    "HTML", "CSS", "JavaScript", "WordPress", "Shopify",
+    "Webflow", "Figma", "Responsive Design", "SEO",
+    "Google Analytics", "jQuery", "SASS", "LESS",
+    "Gatsby", "Hugo", "Jekyll", "Static Site", "CMS",
+    "Landing Page", "Portfolio", "E-commerce"
   ],
   "Desktop App": [
     "Electron", "Tauri", "Qt", "WPF", ".NET", "Java",
