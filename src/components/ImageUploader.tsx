@@ -68,10 +68,6 @@ const ImageUploader = ({
         setUploading(false);
         return;
       }
-
-      if (!currentUser?.id) {
-        throw new Error('Anda harus login untuk mengupload gambar');
-      }
       
       // Create unique filename
       const fileExt = file.name.split('.').pop()?.toLowerCase();
@@ -186,8 +182,8 @@ const ImageUploader = ({
             variant="outline" 
             size="icon" 
             className="flex-shrink-0"
-            disabled={uploading || !currentUser}
-            title={!currentUser ? "Login untuk upload" : "Upload gambar"}
+            disabled={uploading}
+            title="Upload gambar"
           >
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
           </HexaButton>
@@ -196,7 +192,7 @@ const ImageUploader = ({
             accept="image/*"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={uploadImage}
-            disabled={uploading || !currentUser}
+            disabled={uploading}
             title="Pilih gambar untuk diupload"
           />
         </div>
@@ -219,13 +215,6 @@ const ImageUploader = ({
         <div className="text-red-500 text-xs flex items-center gap-1">
           <AlertCircle size={12} />
           <span>{error}</span>
-        </div>
-      )}
-
-      {!currentUser && (
-        <div className="text-amber-600 text-xs flex items-center gap-1">
-          <AlertCircle size={12} />
-          <span>Login diperlukan untuk upload gambar</span>
         </div>
       )}
       
