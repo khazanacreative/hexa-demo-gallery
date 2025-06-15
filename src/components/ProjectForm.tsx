@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HexaButton } from '@/components/ui/hexa-button';
-import { X, Plus, Link } from 'lucide-react';
-import { allTags } from '@/data/mockData';
+import { X, Plus, Link, Tag, Lightbulb } from 'lucide-react';
+import { tagSuggestionsByCategory, generalTechTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
 
@@ -40,6 +40,9 @@ const ProjectForm = ({
     defaultValues?.features || []
   );
   const [newFeature, setNewFeature] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(
+    defaultValues?.category || 'Web App'
+  );
 
   const form = useForm<ProjectFormValues>({
     defaultValues: defaultValues || {
@@ -49,7 +52,7 @@ const ProjectForm = ({
       screenshots: ['/placeholder.svg'],
       demoUrl: 'https://example.com',
       category: 'Web App',
-      tags: [], // Default tidak ada tag
+      tags: [],
       features: [],
     },
   });
@@ -102,6 +105,11 @@ const ProjectForm = ({
     setFeatures(features.filter(f => f !== feature));
   };
 
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    form.setValue('category', category);
+  };
+
   const handleSubmit = (data: ProjectFormValues) => {
     onSubmit({
       ...data,
@@ -109,8 +117,19 @@ const ProjectForm = ({
       screenshots,
       tags: selectedTags,
       features,
+      category: selectedCategory,
     });
     onClose();
+  };
+
+  const getSuggestedTags = () => {
+    const categoryTags = tagSuggestionsByCategory[selectedCategory as keyof typeof tagSuggestionsByCategory] || [];
+    const combinedTags = [...categoryTags, ...generalTechTags];
+    
+    // Filter out already selected tags and limit to 12 suggestions
+    return combinedTags
+      .filter(tag => !selectedTags.includes(tag))
+      .slice(0, 12);
   };
 
   return (
@@ -189,27 +208,22 @@ const ProjectForm = ({
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <select
-                        className="w-full p-2 border border-gray-200 rounded-md"
-                        {...field}
-                      >
-                        <option value="Web App">Web App</option>
-                        <option value="Mobile App">Mobile App</option>
-                        <option value="Website">Website</option>
-                        <option value="Desktop App">Desktop App</option>
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <FormControl>
+                  <select
+                    className="w-full p-2 border border-gray-200 rounded-md"
+                    value={selectedCategory}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                  >
+                    <option value="Web App">Web App</option>
+                    <option value="Mobile App">Mobile App</option>
+                    <option value="Website">Website</option>
+                    <option value="Desktop App">Desktop App</option>
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
 
               <div className="space-y-2">
                 <FormLabel>Screenshots</FormLabel>
@@ -249,25 +263,34 @@ const ProjectForm = ({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <FormLabel>Tags</FormLabel>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {selectedTags.map(tag => (
-                    <div key={tag} className="bg-accent text-foreground px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                      <span>{tag}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-3">
+                <FormLabel className="flex items-center gap-2">
+                  <Tag size={16} />
+                  Tags
+                </FormLabel>
+                
+                {/* Selected Tags */}
+                {selectedTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {selectedTags.map(tag => (
+                      <div key={tag} className="bg-hexa-red text-white px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="text-white/80 hover:text-white"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Add New Tag */}
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Add new tag"
+                    placeholder="Add custom tag"
                     value={newTag}
                     onChange={e => setNewTag(e.target.value)}
                     onKeyDown={e => {
@@ -286,17 +309,22 @@ const ProjectForm = ({
                     <Plus size={16} />
                   </HexaButton>
                 </div>
-                <div className="mt-2">
-                  <p className="text-sm text-gray-500 mb-1">Common tags:</p>
+                
+                {/* Suggested Tags */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Lightbulb size={14} />
+                    <span>Suggested tags for {selectedCategory}:</span>
+                  </div>
                   <div className="flex flex-wrap gap-1">
-                    {allTags.filter(tag => !selectedTags.includes(tag)).slice(0, 8).map(tag => (
+                    {getSuggestedTags().map(tag => (
                       <button
                         key={tag}
                         type="button"
-                        className="bg-secondary text-foreground px-2 py-0.5 rounded-full text-xs"
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs transition-colors"
                         onClick={() => toggleTag(tag)}
                       >
-                        {tag}
+                        + {tag}
                       </button>
                     ))}
                   </div>
