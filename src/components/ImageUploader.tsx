@@ -27,80 +27,11 @@ const ImageUploader = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
-  const [storageReady, setStorageReady] = useState<boolean>(false);
-  const [checkingStorage, setCheckingStorage] = useState<boolean>(true);
   const { currentUser } = useAuth();
   
   useEffect(() => {
     setPreviewUrl(currentImageUrl);
   }, [currentImageUrl]);
-
-  useEffect(() => {
-    checkStorageSetup();
-  }, [bucketName]);
-
-  const checkStorageSetup = async () => {
-    try {
-      setCheckingStorage(true);
-      console.log('Checking storage setup for bucket:', bucketName);
-      
-      // Try to list buckets to check if our bucket exists
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      
-      if (bucketError) {
-        console.error('Error checking buckets:', bucketError);
-        setStorageReady(false);
-        setError('Storage tidak tersedia. Silakan gunakan URL gambar manual.');
-        return;
-      }
-
-      const bucketExists = buckets?.some(bucket => bucket.id === bucketName) || false;
-      console.log('Bucket exists:', bucketExists, 'Available buckets:', buckets?.map(b => b.id));
-      
-      if (!bucketExists) {
-        console.warn(`Bucket ${bucketName} tidak ditemukan`);
-        setStorageReady(false);
-        setError('Storage bucket belum dikonfigurasi. Gunakan URL gambar manual.');
-        return;
-      }
-
-      // Test upload permission with a small test
-      try {
-        const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
-        const testPath = `${folderPath}/test-${Date.now()}.txt`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from(bucketName)
-          .upload(testPath, testFile);
-        
-        if (uploadError) {
-          console.error('Upload test failed:', uploadError);
-          setStorageReady(false);
-          setError('Upload tidak diizinkan. Pastikan Anda sudah login.');
-          return;
-        }
-
-        // Clean up test file
-        await supabase.storage.from(bucketName).remove([testPath]);
-        
-        setStorageReady(true);
-        setError(null);
-        console.log('Storage setup check passed');
-        
-      } catch (testError) {
-        console.error('Storage test error:', testError);
-        setStorageReady(false);
-        setError('Storage test gagal. Gunakan URL gambar manual.');
-      }
-      
-    } catch (error) {
-      console.error('Storage check error:', error);
-      setStorageReady(false);
-      setError('Gagal memeriksa storage. Gunakan URL gambar manual.');
-    } finally {
-      setCheckingStorage(false);
-    }
-  };
   
   const validateFile = (file: File): boolean => {
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
@@ -138,8 +69,8 @@ const ImageUploader = ({
         return;
       }
 
-      if (!storageReady) {
-        throw new Error('Storage belum siap. Silakan coba lagi atau gunakan URL gambar manual.');
+      if (!currentUser?.id) {
+        throw new Error('Anda harus login untuk mengupload gambar');
       }
       
       // Create unique filename
@@ -255,12 +186,8 @@ const ImageUploader = ({
             variant="outline" 
             size="icon" 
             className="flex-shrink-0"
-            disabled={uploading || checkingStorage || !storageReady}
-            title={
-              checkingStorage ? "Memeriksa storage..." :
-              !storageReady ? "Upload tidak tersedia" : 
-              "Upload gambar"
-            }
+            disabled={uploading || !currentUser}
+            title={!currentUser ? "Login untuk upload" : "Upload gambar"}
           >
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
           </HexaButton>
@@ -269,7 +196,7 @@ const ImageUploader = ({
             accept="image/*"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={uploadImage}
-            disabled={uploading || checkingStorage || !storageReady}
+            disabled={uploading || !currentUser}
             title="Pilih gambar untuk diupload"
           />
         </div>
@@ -295,24 +222,10 @@ const ImageUploader = ({
         </div>
       )}
 
-      {checkingStorage && (
-        <div className="text-blue-600 text-xs flex items-center gap-1">
-          <Loader2 size={12} className="animate-spin" />
-          <span>Memeriksa storage...</span>
-        </div>
-      )}
-
-      {!checkingStorage && !storageReady && (
+      {!currentUser && (
         <div className="text-amber-600 text-xs flex items-center gap-1">
           <AlertCircle size={12} />
-          <span>Upload dinonaktifkan. Gunakan URL gambar manual.</span>
-        </div>
-      )}
-
-      {!checkingStorage && storageReady && (
-        <div className="text-green-600 text-xs flex items-center gap-1">
-          <span>✓</span>
-          <span>Upload siap digunakan</span>
+          <span>Login diperlukan untuk upload gambar</span>
         </div>
       )}
       
