@@ -139,7 +139,7 @@ const ProjectGallery = () => {
           description: data[0].description || '',
           coverImage: data[0].cover_image || '',
           screenshots: data[0].screenshots || [],
-          demoUrl: data[0].demoUrl || '',
+          demoUrl: data[0].demo_url || '',
           category: data[0].category || '',
           tags: data[0].tags || [],
           features: data[0].features || [],
