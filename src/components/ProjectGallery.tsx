@@ -67,8 +67,8 @@ const ProjectGallery = () => {
   const getUserUUID = (userId: string): string => {
     // Map local user IDs to the UUIDs we inserted in the database
     const userMapping = {
-      'c07e6ba2-a252-4f7c-a0f8-0ac7dbe433d5': '00000001-0000-0000-0000-000000000001', // admin
-      'ef13c84c-195d-44ca-bf4a-8166500f1b3c': '00000002-0000-0000-0000-000000000002', // user
+      '1': 'c07e6ba2-a252-4f7c-a0f8-0ac7dbe433d5', // admin user
+      '2': 'ef13c84c-195d-44ca-bf4a-8166500f1b3c', // regular user
     };
     
     return userMapping[userId as keyof typeof userMapping] || userId;
