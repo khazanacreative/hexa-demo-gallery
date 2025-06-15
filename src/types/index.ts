@@ -1,4 +1,3 @@
-
 export interface Project {
   id: string;
   title: string;
@@ -18,7 +17,10 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
+  categoryPermissions?: CategoryPermission[];
 }
+
+export type CategoryPermission = 'Web App' | 'Mobile App' | 'Website' | 'Desktop App';
 
 export interface FileUploadResult {
   path: string;

@@ -1,7 +1,6 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Project } from '@/types';
-import { projects as initialProjects } from '@/data/mockData';
+import { Project, CategoryPermission } from '@/types';
+import { projects as initialProjects, tagSuggestionsByCategory, generalTechTags } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
@@ -12,6 +11,8 @@ interface ProjectContextType {
   searchQuery: string;
   selectedCategory: string | null;
   selectedTags: string[];
+  allowedCategories: CategoryPermission[];
+  allowedTags: string[];
   addProject: (project: Project) => void;
   updateProject: (project: Project) => void;
   deleteProject: (id: string) => void;
@@ -31,6 +32,25 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { currentUser } = useAuth();
+
+  // Get allowed categories based on user permissions
+  const allowedCategories: CategoryPermission[] = 
+    currentUser?.role === 'admin' 
+      ? ['Web App', 'Mobile App', 'Website', 'Desktop App']
+      : currentUser?.categoryPermissions || ['Web App', 'Mobile App'];
+
+  // Get allowed tags based on user's category permissions
+  const allowedTags = (() => {
+    let tags: string[] = [...generalTechTags];
+    
+    allowedCategories.forEach(category => {
+      const categoryTags = tagSuggestionsByCategory[category] || [];
+      tags = [...tags, ...categoryTags];
+    });
+    
+    // Remove duplicates
+    return [...new Set(tags)];
+  })();
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -137,6 +157,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const filteredProjects = projects.filter(project => {
+    // Filter by user's category permissions
+    const hasPermission = allowedCategories.includes(project.category as CategoryPermission);
+    
     const matchesSearch = searchQuery === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,7 +170,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     const matchesTags = selectedTags.length === 0 || 
       selectedTags.every(tag => project.tags.includes(tag));
     
-    return matchesSearch && matchesCategory && matchesTags;
+    return hasPermission && matchesSearch && matchesCategory && matchesTags;
   });
 
   return (
@@ -158,6 +181,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         searchQuery,
         selectedCategory,
         selectedTags,
+        allowedCategories,
+        allowedTags,
         addProject, 
         updateProject, 
         deleteProject,
