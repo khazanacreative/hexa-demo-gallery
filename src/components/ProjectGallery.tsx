@@ -63,6 +63,18 @@ const ProjectGallery = () => {
     setIsAddFormOpen(true);
   };
 
+  // Helper function to generate a valid UUID for local users
+  const generateUserUUID = (userId: string): string => {
+    if (userId.length === 32 && userId.includes('-')) {
+      return userId; // Already a UUID
+    }
+    
+    // Create a UUID-like string from the user ID
+    // This ensures consistency for the same user ID
+    const paddedId = userId.padStart(8, '0');
+    return `${paddedId.substring(0, 8)}-0000-0000-0000-${paddedId.padStart(12, '0')}`;
+  };
+
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
     if (isSubmitting) return;
     
@@ -76,6 +88,10 @@ const ProjectGallery = () => {
         throw new Error('You must be logged in to add a project');
       }
 
+      // Generate a proper UUID for the user
+      const userUUID = generateUserUUID(currentUser.id);
+      console.log('Generated user UUID:', userUUID);
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -87,7 +103,7 @@ const ProjectGallery = () => {
           category: projectData.category,
           tags: projectData.tags,
           features: projectData.features,
-          user_id: currentUser.id
+          user_id: userUUID
         })
         .select();
 
@@ -218,8 +234,59 @@ const ProjectGallery = () => {
     }
   };
 
+  // Filter categories and tags based on user permissions
+  const getUserAllowedCategories = () => {
+    if (!currentUser?.categoryPermissions) {
+      return ['Web App', 'Mobile App'];
+    }
+    
+    const categoryMap = {
+      'web-app': 'Web App',
+      'mobile-app': 'Mobile App', 
+      'website': 'Website'
+    };
+    
+    return currentUser.categoryPermissions.map(perm => categoryMap[perm]);
+  };
+
+  const getUserAllowedTags = () => {
+    if (!currentUser?.categoryPermissions) {
+      return [...allTags.webApp, ...allTags.mobileApp];
+    }
+    
+    let allowedTags: string[] = [];
+    currentUser.categoryPermissions.forEach(permission => {
+      switch (permission) {
+        case 'web-app':
+          allowedTags = [...allowedTags, ...allTags.webApp];
+          break;
+        case 'mobile-app':
+          allowedTags = [...allowedTags, ...allTags.mobileApp];
+          break;
+        case 'website':
+          allowedTags = [...allowedTags, ...allTags.website];
+          break;
+      }
+    });
+    
+    return [...new Set(allowedTags)];
+  };
+
+  const allowedCategories = getUserAllowedCategories();
+  const allowedTags = getUserAllowedTags();
+
+  // Filter projects and categories based on user permissions
+  const userFilteredProjects = filteredProjects.filter(project => 
+    allowedCategories.includes(project.category)
+  );
+
   const categories = Array.from(
-    new Set(filteredProjects.map(p => p.category).filter(Boolean))
+    new Set(userFilteredProjects.map(p => p.category).filter(Boolean))
+  );
+
+  // Filter tags that appear in visible projects
+  const visibleTags = allowedTags.filter(tag =>
+    userFilteredProjects.some(project => project.tags.includes(tag))
   );
 
   return (
@@ -306,7 +373,7 @@ const ProjectGallery = () => {
           <span className="text-sm font-medium">Tags:</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {allTags.map(tag => (
+          {visibleTags.map(tag => (
             <button
               key={tag}
               onClick={() => toggleTagSelection(tag)}
@@ -323,7 +390,7 @@ const ProjectGallery = () => {
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project) => (
+        {userFilteredProjects.map((project) => (
           <ProjectCard 
             key={project.id} 
             project={project} 
@@ -334,7 +401,7 @@ const ProjectGallery = () => {
         ))}
       </div>
       
-      {filteredProjects.length === 0 && (
+      {userFilteredProjects.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No projects found matching the selected filters.</p>
         </div>
