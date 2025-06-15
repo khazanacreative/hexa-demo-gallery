@@ -1,5 +1,6 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User, UserRole, CategoryPermission } from '@/types';
+import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthUser extends User {
@@ -12,7 +13,6 @@ interface UserCreationData {
   email: string;
   password: string;
   role: UserRole;
-  categoryPermissions?: CategoryPermission[];
 }
 
 interface AuthContextType {
@@ -35,7 +35,6 @@ const initialUsers: AuthUser[] = [
     email: 'admin@example.com',
     password: 'password',
     role: 'admin',
-    categoryPermissions: ['web-app', 'mobile-app', 'website'],
   },
   {
     id: 'ef13c84c-195d-44ca-bf4a-8166500f1b3c',
@@ -43,7 +42,6 @@ const initialUsers: AuthUser[] = [
     email: 'user@example.com',
     password: 'password',
     role: 'user',
-    categoryPermissions: ['web-app', 'mobile-app'],
   },
 ];
 
@@ -188,8 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const addUser = async (userData: UserCreationData): Promise<void> => {
     const newUser: AuthUser = {
       id: Date.now().toString(),
-      ...userData,
-      categoryPermissions: userData.categoryPermissions || ['web-app', 'mobile-app']
+      ...userData
     };
     
     setUsers(prevUsers => [...prevUsers, newUser]);

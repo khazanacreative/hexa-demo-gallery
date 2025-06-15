@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Project, CategoryPermission } from '@/types';
+import { Project } from '@/types';
 import { projects as initialProjects } from '@/data/mockData';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -136,24 +136,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
-  const getUserAllowedCategories = useCallback(() => {
-    if (!currentUser?.categoryPermissions) {
-      return ['Web App', 'Mobile App']; // Default permissions
-    }
-    
-    const categoryMap: Record<CategoryPermission, string> = {
-      'web-app': 'Web App',
-      'mobile-app': 'Mobile App', 
-      'website': 'Website'
-    };
-    
-    return currentUser.categoryPermissions.map(perm => categoryMap[perm]);
-  }, [currentUser]);
-
   const filteredProjects = projects.filter(project => {
-    const allowedCategories = getUserAllowedCategories();
-    const categoryAllowed = allowedCategories.includes(project.category);
-    
     const matchesSearch = searchQuery === '' || 
       project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -164,13 +147,13 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     const matchesTags = selectedTags.length === 0 || 
       selectedTags.every(tag => project.tags.includes(tag));
     
-    return categoryAllowed && matchesSearch && matchesCategory && matchesTags;
+    return matchesSearch && matchesCategory && matchesTags;
   });
 
   return (
     <ProjectContext.Provider 
       value={{ 
-        projects: filteredProjects, // Return filtered projects as base projects
+        projects, 
         filteredProjects,
         searchQuery,
         selectedCategory,

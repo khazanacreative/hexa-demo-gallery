@@ -14,13 +14,10 @@ export interface Project {
 
 export type UserRole = 'admin' | 'user';
 
-export type CategoryPermission = 'web-app' | 'mobile-app' | 'website';
-
 export interface User {
   id: string;
   name: string;
   role: UserRole;
-  categoryPermissions?: CategoryPermission[];
 }
 
 export interface FileUploadResult {

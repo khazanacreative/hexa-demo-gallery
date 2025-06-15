@@ -1,3 +1,4 @@
+
 import { Project } from '../types';
 import { User } from '../types';
 
@@ -89,48 +90,25 @@ export const users: User[] = [
   }
 ];
 
-export const allTags = {
-  webApp: [
-    "React", 
-    "Vue.js", 
-    "Angular", 
-    "Node.js", 
-    "Express", 
-    "MongoDB", 
-    "PostgreSQL", 
-    "Firebase", 
-    "NextJS", 
-    "Tailwind CSS", 
-    "Material-UI", 
-    "Bootstrap", 
-    "TypeScript", 
-    "JavaScript", 
-    "GraphQL", 
-    "REST API", 
-    "Redux"
-  ],
-  mobileApp: [
-    "React Native", 
-    "Flutter", 
-    "Swift",
-    "Kotlin",
-    "Expo",
-    "Firebase",
-    "Redux",
-    "TypeScript",
-    "JavaScript"
-  ],
-  website: [
-    "WordPress",
-    "Vite", 
-    "PHP",
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "Bootstrap",
-    "Tailwind CSS",
-    "jQuery",
-    "SASS",
-    "LESS"
-  ]
-};
+export const allTags = [
+  "React", 
+  "Vue.js", 
+  "Angular", 
+  "Node.js", 
+  "Express", 
+  "MongoDB", 
+  "PostgreSQL", 
+  "Firebase", 
+  "NextJS", 
+  "Tailwind CSS", 
+  "Material-UI", 
+  "Bootstrap", 
+  "TypeScript", 
+  "JavaScript", 
+  "GraphQL", 
+  "REST API", 
+  "Redux", 
+  "React Native", 
+  "Flutter", 
+  "Swift"
+];

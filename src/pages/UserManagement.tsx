@@ -1,14 +1,13 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { UserPlus, Trash2, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CategoryPermission } from '@/types';
 
 const UserManagement = () => {
   const { currentUser, users, addUser, removeUser } = useAuth();
@@ -16,7 +15,6 @@ const UserManagement = () => {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserName, setNewUserName] = useState('');
-  const [selectedPermissions, setSelectedPermissions] = useState<CategoryPermission[]>(['web-app', 'mobile-app']);
   const [isAddingUser, setIsAddingUser] = useState(false);
 
   // Redirect if not admin - this will be handled in App.tsx with protected routes
@@ -32,14 +30,6 @@ const UserManagement = () => {
     );
   }
 
-  const handlePermissionChange = (permission: CategoryPermission, checked: boolean) => {
-    setSelectedPermissions(prev => 
-      checked 
-        ? [...prev, permission]
-        : prev.filter(p => p !== permission)
-    );
-  };
-
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAddingUser(true);
@@ -49,8 +39,7 @@ const UserManagement = () => {
         email: newUserEmail,
         password: newUserPassword,
         name: newUserName,
-        role: 'user',
-        categoryPermissions: selectedPermissions
+        role: 'user' // New users are always regular users
       });
       
       toast({
@@ -62,7 +51,6 @@ const UserManagement = () => {
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserName('');
-      setSelectedPermissions(['web-app', 'mobile-app']);
     } catch (error) {
       toast({
         title: "Error",
@@ -91,15 +79,6 @@ const UserManagement = () => {
         });
         console.error(error);
       }
-    }
-  };
-
-  const getCategoryLabel = (permission: CategoryPermission) => {
-    switch (permission) {
-      case 'web-app': return 'Web App';
-      case 'mobile-app': return 'Mobile App';
-      case 'website': return 'Website';
-      default: return permission;
     }
   };
 
@@ -161,27 +140,6 @@ const UserManagement = () => {
                   />
                 </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category Permissions
-                </label>
-                <div className="flex gap-4">
-                  {(['web-app', 'mobile-app', 'website'] as CategoryPermission[]).map((permission) => (
-                    <div key={permission} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={permission}
-                        checked={selectedPermissions.includes(permission)}
-                        onCheckedChange={(checked) => handlePermissionChange(permission, checked as boolean)}
-                      />
-                      <label htmlFor={permission} className="text-sm text-gray-700">
-                        {getCategoryLabel(permission)}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
               <div className="flex justify-end">
                 <Button 
                   type="submit" 
@@ -209,9 +167,6 @@ const UserManagement = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Permissions
-                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -234,15 +189,6 @@ const UserManagement = () => {
                       }`}>
                         {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex flex-wrap gap-1">
-                        {user.categoryPermissions?.map(permission => (
-                          <span key={permission} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                            {getCategoryLabel(permission)}
-                          </span>
-                        ))}
-                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {user.role !== 'admin' && (

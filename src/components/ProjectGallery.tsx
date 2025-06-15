@@ -1,170 +1,377 @@
 
-import React, { useState, useEffect } from 'react';
-import { useProjects } from '@/context/ProjectContext';
-import { useAuth } from '@/context/AuthContext';
+import { useState } from 'react';
+import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Search, Filter } from 'lucide-react';
+import ProjectDetailsModal from './ProjectDetailsModal';
+import ProjectForm from './ProjectForm';
+import DeleteConfirmationDialog from './DeleteConfirmationDialog';
+import { useAuth } from '@/context/AuthContext';
+import { useProjects } from '@/context/ProjectContext';
+import { HexaButton } from './ui/hexa-button';
+import { Input } from './ui/input';
+import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
 import { allTags } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from './ui/use-toast';
 
 const ProjectGallery = () => {
-  const { projects, searchQuery, setSearchQuery, selectedCategory, setSelectedCategory, selectedTags, toggleTagSelection, isLoading } = useProjects();
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const { currentUser } = useAuth();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const { 
+    filteredProjects, 
+    addProject, 
+    updateProject, 
+    deleteProject,
+    searchQuery,
+    setSearchQuery,
+    selectedCategory,
+    setSelectedCategory,
+    selectedTags,
+    toggleTagSelection,
+    refreshProjects
+  } = useProjects();
+  
+  const isAdmin = currentUser?.role === 'admin';
 
-  useEffect(() => {
-    document.body.classList.toggle('overflow-hidden', isFilterOpen);
-    return () => document.body.classList.remove('overflow-hidden');
-  }, [isFilterOpen]);
+  const handleProjectClick = (project: Project) => {
+    setSelectedProject(project);
+    setIsModalOpen(true);
+  };
 
-  const getAvailableTags = () => {
-    if (!currentUser?.categoryPermissions) {
-      return allTags.webApp.concat(allTags.mobileApp);
-    }
+  const handleEditProject = (project: Project) => {
+    setSelectedProject(project);
+    setIsEditFormOpen(true);
+  };
+
+  const handleDeleteProject = (project: Project) => {
+    setProjectToDelete(project);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleAddNewProject = () => {
+    setIsAddFormOpen(true);
+  };
+
+  const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+    if (isSubmitting) return;
     
-    let availableTags: string[] = [];
-    currentUser.categoryPermissions.forEach(permission => {
-      switch (permission) {
-        case 'web-app':
-          availableTags = availableTags.concat(allTags.webApp);
-          break;
-        case 'mobile-app':
-          availableTags = availableTags.concat(allTags.mobileApp);
-          break;
-        case 'website':
-          availableTags = availableTags.concat(allTags.website);
-          break;
+    setIsSubmitting(true);
+    try {
+      console.log('Adding project:', projectData);
+      console.log('Current user:', currentUser);
+      
+      // Check if the user is logged in
+      if (!currentUser?.id) {
+        throw new Error('You must be logged in to add a project');
       }
-    });
+
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          title: projectData.title,
+          description: projectData.description || '',
+          cover_image: projectData.coverImage,
+          screenshots: projectData.screenshots,
+          demo_url: projectData.demoUrl,
+          category: projectData.category,
+          tags: projectData.tags,
+          features: projectData.features,
+          user_id: currentUser.id
+        })
+        .select();
+
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+
+      if (data && data[0]) {
+        const newProject: Project = {
+          id: data[0].id,
+          title: data[0].title,
+          description: data[0].description || '',
+          coverImage: data[0].cover_image || '',
+          screenshots: data[0].screenshots || [],
+          demoUrl: data[0].demo_url || '',
+          category: data[0].category || '',
+          tags: data[0].tags || [],
+          features: data[0].features || [],
+          createdAt: data[0].created_at
+        };
+
+        addProject(newProject);
+        toast({
+          title: "Project berhasil ditambahkan",
+          description: `${newProject.title} telah berhasil ditambahkan.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error adding project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan project. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsAddFormOpen(false);
+      // Refresh projects to ensure data consistency
+      refreshProjects();
+    }
+  };
+
+  const handleUpdateProject = async (updatedProject: Project) => {
+    if (isSubmitting) return;
     
-    return [...new Set(availableTags)];
+    setIsSubmitting(true);
+    try {
+      console.log('Updating project with ID:', updatedProject.id);
+      console.log('Current user:', currentUser);
+
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          title: updatedProject.title,
+          description: updatedProject.description,
+          cover_image: updatedProject.coverImage,
+          screenshots: updatedProject.screenshots,
+          demo_url: updatedProject.demoUrl,
+          category: updatedProject.category,
+          tags: updatedProject.tags,
+          features: updatedProject.features
+        })
+        .eq('id', updatedProject.id);
+
+      if (error) {
+        console.error('Update error details:', error);
+        throw error;
+      }
+
+      updateProject(updatedProject);
+      toast({
+        title: "Project berhasil diupdate",
+        description: `${updatedProject.title} telah berhasil diupdate.`,
+      });
+
+    } catch (error) {
+      console.error('Error updating project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal mengupdate project. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsEditFormOpen(false);
+      // Refresh projects to ensure data consistency
+      refreshProjects();
+    }
   };
 
-  const availableTags = getAvailableTags();
+  const handleDeleteProjectConfirm = async () => {
+    if (!projectToDelete || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      console.log('Deleting project with ID:', projectToDelete.id);
+      console.log('Current user:', currentUser);
 
-  const toggleFilter = () => {
-    setIsFilterOpen(!isFilterOpen);
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectToDelete.id);
+
+      if (error) {
+        console.error('Delete error details:', error);
+        throw error;
+      }
+
+      deleteProject(projectToDelete.id);
+      toast({
+        title: "Project berhasil dihapus",
+        description: "Project telah berhasil dihapus.",
+      });
+      
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus project. Silakan coba lagi.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+      setIsDeleteDialogOpen(false);
+      // Refresh projects to ensure data consistency
+      refreshProjects();
+    }
   };
 
-  const handleCategoryClick = (category: string | null) => {
-    setSelectedCategory(category);
-    setIsFilterOpen(false);
-  };
-
-  const handleProjectClick = (project: any) => {
-    // Handle project click - you can implement project details modal here
-    console.log('Project clicked:', project);
-  };
+  const categories = Array.from(
+    new Set(filteredProjects.map(p => p.category).filter(Boolean))
+  );
 
   return (
-    <div className="relative">
-      {/* Search Bar */}
-      <div className="sticky top-0 z-10 bg-gradient-to-b from-gray-50 to-gray-100 p-4">
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-grow">
-            <Input
-              type="text"
-              placeholder="Search projects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-full pl-10"
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+    <div className="container mx-auto py-8 px-4 sm:px-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-hexa-red to-hexa-dark-red bg-clip-text text-transparent">
+          Application & Website Gallery
+        </h2>
+        
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-gradient-to-r from-hexa-red/10 to-hexa-dark-red/10 px-3 py-1.5 rounded-full text-sm">
+            <span className="w-2 h-2 rounded-full animate-hexa-pulse" 
+                  style={{backgroundColor: isAdmin ? '#ea384c' : '#555555'}}></span>
+            <span className="font-medium">
+              {isAdmin ? 'Admin' : 'User'} View
+            </span>
           </div>
-          <button
-            onClick={toggleFilter}
-            className="bg-secondary text-foreground p-2 rounded-full hover:bg-accent transition-colors"
-          >
-            <Filter className="h-5 w-5" />
-          </button>
+          
+          {isAdmin && (
+            <HexaButton 
+              variant="hexa" 
+              size="sm" 
+              className="gap-1" 
+              onClick={handleAddNewProject} 
+              disabled={isSubmitting}
+            >
+              <Plus size={14} />
+              <span>New Project</span>
+            </HexaButton>
+          )}
         </div>
       </div>
-
-      {/* Filter Modal */}
-      {isFilterOpen && (
-        <div className="fixed inset-0 z-20 overflow-y-auto bg-black bg-opacity-50">
-          <div className="flex min-h-screen items-center justify-center">
-            <div className="relative bg-white rounded-xl shadow-lg max-w-md w-full mx-4 p-6">
-              <button
-                onClick={toggleFilter}
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-              >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-              <h2 className="text-lg font-semibold mb-4">Filter Projects</h2>
-
-              {/* Category Filters */}
-              <div className="mb-4">
-                <h3 className="text-md font-semibold mb-2">Categories</h3>
-                <Badge
-                  onClick={() => handleCategoryClick(null)}
-                  className={`cursor-pointer mr-2 mb-2 ${selectedCategory === null ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
-                    }`}
-                >
-                  All
-                </Badge>
-                {(['Web App', 'Mobile App', 'Website']).map((category) => (
-                  <Badge
-                    key={category}
-                    onClick={() => handleCategoryClick(category)}
-                    className={`cursor-pointer mr-2 mb-2 ${selectedCategory === category ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
-                      }`}
-                  >
-                    {category}
-                  </Badge>
-                ))}
-              </div>
-
-              {/* Tag Filters */}
-              <div>
-                <h3 className="text-md font-semibold mb-2">Tags</h3>
-                <div className="flex flex-wrap">
-                  {availableTags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      onClick={() => toggleTagSelection(tag)}
-                      className={`cursor-pointer mr-2 mb-2 ${selectedTags.includes(tag) ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
-                        }`}
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+      
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Input
+            className="pl-10 pr-4 w-full"
+            placeholder="Search projects by title, description or tag..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button 
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setSearchQuery('')}
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
-      )}
-
-      {/* Project Grid */}
-      {isLoading ? (
-        <div className="flex justify-center items-center h-48">
-          <p>Loading projects...</p>
+      </div>
+      
+      <div className="mb-4 flex flex-wrap gap-2">
+        <HexaButton 
+          variant={selectedCategory === null ? "hexa" : "outline"}
+          size="sm"
+          className="rounded-full"
+          onClick={() => setSelectedCategory(null)}
+        >
+          <LayoutGrid size={14} className="mr-1" />
+          All
+        </HexaButton>
+        
+        {categories.map(category => (
+          category && (
+            <HexaButton
+              key={category}
+              variant={selectedCategory === category ? "hexa" : "outline"}
+              size="sm"
+              className="rounded-full"
+              onClick={() => setSelectedCategory(category)}
+            >
+              <Filter size={14} className="mr-1" />
+              {category}
+            </HexaButton>
+          )
+        ))}
+      </div>
+      
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Tag size={16} className="text-gray-500" />
+          <span className="text-sm font-medium">Tags:</span>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-          {projects.map((project) => (
-            <ProjectCard 
-              key={project.id} 
-              project={project} 
-              onClick={handleProjectClick}
-            />
+        <div className="flex flex-wrap gap-2">
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => toggleTagSelection(tag)}
+              className={`px-2 py-1 text-xs rounded-full transition-all ${
+                selectedTags.includes(tag)
+                  ? 'bg-hexa-red text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {tag}
+            </button>
           ))}
         </div>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredProjects.map((project) => (
+          <ProjectCard 
+            key={project.id} 
+            project={project} 
+            onClick={handleProjectClick}
+            onEdit={isAdmin ? handleEditProject : undefined}
+            onDelete={isAdmin ? handleDeleteProject : undefined}
+          />
+        ))}
+      </div>
+      
+      {filteredProjects.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No projects found matching the selected filters.</p>
+        </div>
       )}
+
+      <ProjectDetailsModal 
+        project={selectedProject} 
+        isOpen={isModalOpen} 
+        onClose={closeModal}
+        onEdit={isAdmin && selectedProject ? () => handleEditProject(selectedProject) : undefined}
+      />
+      
+      {isAddFormOpen && (
+        <ProjectForm
+          isOpen={isAddFormOpen}
+          onClose={() => setIsAddFormOpen(false)}
+          onSubmit={handleAddProject}
+          title="Add New Project"
+        />
+      )}
+      
+      {isEditFormOpen && selectedProject && (
+        <ProjectForm
+          isOpen={isEditFormOpen}
+          onClose={() => setIsEditFormOpen(false)}
+          onSubmit={handleUpdateProject}
+          defaultValues={selectedProject}
+          title="Edit Project"
+        />
+      )}
+      
+      <DeleteConfirmationDialog
+        project={projectToDelete}
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteProjectConfirm}
+      />
     </div>
   );
 };
