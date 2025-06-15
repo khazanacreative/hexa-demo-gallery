@@ -57,13 +57,10 @@ const ImageUploader = ({
         throw new Error('Anda harus memilih gambar untuk diupload.');
       }
 
-      console.log('Starting upload process...');
-      
       const file = event.target.files[0];
       console.log('Selected file:', file.name, file.size, file.type);
       
       if (!validateFile(file)) {
-        setUploading(false);
         return;
       }
       
@@ -72,37 +69,30 @@ const ImageUploader = ({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       const filePath = `${folderPath}/${fileName}.${fileExt}`;
       
-      console.log(`Uploading image to: ${bucketName}/${filePath}`);
+      console.log(`Uploading to: ${bucketName}/${filePath}`);
       
-      // Upload the file with upsert true to avoid conflicts
+      // Upload with minimal options to avoid RLS issues
       const { data, error } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+        .upload(filePath, file);
 
       if (error) {
-        console.error('Storage error details:', error);
-        throw new Error(`Error upload: ${error.message}`);
+        console.error('Upload error:', error);
+        throw new Error(`Upload error: ${error.message}`);
       }
 
       if (!data) {
         throw new Error('Upload gagal - tidak ada data yang dikembalikan');
       }
 
-      console.log('Upload successful:', data);
-
       // Get the public URL
       const { data: urlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(data.path);
       
-      console.log('Public URL generated:', urlData.publicUrl);
-
       const publicUrl = urlData.publicUrl;
       
-      // Update preview immediately
+      // Update preview and notify parent
       setPreviewUrl(publicUrl);
       onImageUploaded({
         path: data.path,
