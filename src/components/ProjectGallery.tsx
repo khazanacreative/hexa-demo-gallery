@@ -139,7 +139,7 @@ const ProjectGallery = () => {
           description: data[0].description || '',
           coverImage: data[0].cover_image || '',
           screenshots: data[0].screenshots || [],
-          demoUrl: data[0].demo_url || '',
+          demoUrl: data[0].demoUrl || '',
           category: data[0].category || '',
           tags: data[0].tags || [],
           features: data[0].features || [],
@@ -254,6 +254,19 @@ const ProjectGallery = () => {
     }
   };
 
+  // Fixed categories that should always appear
+  const fixedCategories = ['Website', 'Web App', 'Mobile App'];
+  
+  // Get additional categories from projects that aren't in the fixed list
+  const additionalCategories = Array.from(
+    new Set(filteredProjects.map(p => p.category).filter(category => 
+      category && !fixedCategories.includes(category)
+    ))
+  );
+  
+  // Combine fixed categories with additional ones
+  const allCategories = [...fixedCategories, ...additionalCategories];
+
   // Simplified category and tag filtering for basic functionality
   const categories = Array.from(
     new Set(filteredProjects.map(p => p.category).filter(Boolean))
@@ -344,19 +357,17 @@ const ProjectGallery = () => {
           All
         </HexaButton>
         
-        {categories.map(category => (
-          category && (
-            <HexaButton
-              key={category}
-              variant={selectedCategory === category ? "hexa" : "outline"}
-              size="sm"
-              className="rounded-full"
-              onClick={() => handleCategoryChange(category)}
-            >
-              <Filter size={14} className="mr-1" />
-              {category}
-            </HexaButton>
-          )
+        {allCategories.map(category => (
+          <HexaButton
+            key={category}
+            variant={selectedCategory === category ? "hexa" : "outline"}
+            size="sm"
+            className="rounded-full"
+            onClick={() => handleCategoryChange(category)}
+          >
+            <Filter size={14} className="mr-1" />
+            {category}
+          </HexaButton>
         ))}
       </div>
       
