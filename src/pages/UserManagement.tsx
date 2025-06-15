@@ -1,14 +1,13 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { UserPlus, Trash2, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CategoryPermission } from '@/types';
 
 const UserManagement = () => {
   const { currentUser, users, addUser, removeUser } = useAuth();
@@ -17,9 +16,6 @@ const UserManagement = () => {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<CategoryPermission[]>(['Web App', 'Mobile App']);
-
-  const availableCategories: CategoryPermission[] = ['Web App', 'Mobile App', 'Website', 'Desktop App'];
 
   // Redirect if not admin - this will be handled in App.tsx with protected routes
   if (currentUser.role !== 'admin') {
@@ -34,26 +30,8 @@ const UserManagement = () => {
     );
   }
 
-  const handleCategoryChange = (category: CategoryPermission, checked: boolean) => {
-    if (checked) {
-      setSelectedCategories(prev => [...prev, category]);
-    } else {
-      setSelectedCategories(prev => prev.filter(c => c !== category));
-    }
-  };
-
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (selectedCategories.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one category permission",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsAddingUser(true);
     
     try {
@@ -61,8 +39,7 @@ const UserManagement = () => {
         email: newUserEmail,
         password: newUserPassword,
         name: newUserName,
-        role: 'user',
-        categoryPermissions: selectedCategories
+        role: 'user' // New users are always regular users
       });
       
       toast({
@@ -74,7 +51,6 @@ const UserManagement = () => {
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserName('');
-      setSelectedCategories(['Web App', 'Mobile App']);
     } catch (error) {
       toast({
         title: "Error",
@@ -164,36 +140,6 @@ const UserManagement = () => {
                   />
                 </div>
               </div>
-              
-              {/* Category Permissions */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category Permissions
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {availableCategories.map(category => (
-                    <div key={category} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={category}
-                        checked={selectedCategories.includes(category)}
-                        onCheckedChange={(checked) => 
-                          handleCategoryChange(category, checked as boolean)
-                        }
-                      />
-                      <label 
-                        htmlFor={category} 
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {category}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Select which project categories this user can access
-                </p>
-              </div>
-              
               <div className="flex justify-end">
                 <Button 
                   type="submit" 
@@ -221,9 +167,6 @@ const UserManagement = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Categories
-                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -246,15 +189,6 @@ const UserManagement = () => {
                       }`}>
                         {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="flex flex-wrap gap-1">
-                        {(user.categoryPermissions || ['All']).map(category => (
-                          <span key={category} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                            {category}
-                          </span>
-                        ))}
-                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {user.role !== 'admin' && (

@@ -1,11 +1,11 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { User, UserRole, CategoryPermission } from '@/types';
+import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthUser extends User {
   email: string;
   password?: string;
-  categoryPermissions?: CategoryPermission[];
 }
 
 interface UserCreationData {
@@ -13,7 +13,6 @@ interface UserCreationData {
   email: string;
   password: string;
   role: UserRole;
-  categoryPermissions: CategoryPermission[];
 }
 
 interface AuthContextType {
@@ -36,7 +35,6 @@ const initialUsers: AuthUser[] = [
     email: 'admin@example.com',
     password: 'password',
     role: 'admin',
-    categoryPermissions: ['Web App', 'Mobile App', 'Website', 'Desktop App'],
   },
   {
     id: 'ef13c84c-195d-44ca-bf4a-8166500f1b3c',
@@ -44,7 +42,6 @@ const initialUsers: AuthUser[] = [
     email: 'user@example.com',
     password: 'password',
     role: 'user',
-    categoryPermissions: ['Web App', 'Mobile App'],
   },
 ];
 
@@ -88,8 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             id: session.user.id,
             name: session.user.user_metadata?.name || session.user.email || 'User',
             email: session.user.email || '',
-            role: session.user.user_metadata?.role || 'user',
-            categoryPermissions: session.user.user_metadata?.category_permissions || []
+            role: session.user.user_metadata?.role || 'user'
           };
           setCurrentUser(authUser);
           setIsAuthenticated(true);
@@ -111,8 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: session.user.id,
           name: session.user.user_metadata?.name || session.user.email || 'User',
           email: session.user.email || '',
-          role: session.user.user_metadata?.role || 'user',
-          categoryPermissions: session.user.user_metadata?.category_permissions || []
+          role: session.user.user_metadata?.role || 'user'
         };
         setCurrentUser(authUser);
         setIsAuthenticated(true);
@@ -148,8 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           id: data.user.id,
           name: data.user.user_metadata?.name || data.user.email || 'User',
           email: data.user.email || '',
-          role: data.user.user_metadata?.role || 'user',
-          categoryPermissions: data.user.user_metadata?.category_permissions || []
+          role: data.user.user_metadata?.role || 'user'
         };
         setCurrentUser(authUser);
         setIsAuthenticated(true);

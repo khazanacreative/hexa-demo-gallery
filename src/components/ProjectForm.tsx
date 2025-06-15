@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HexaButton } from '@/components/ui/hexa-button';
 import { X, Plus, Link, Tag, Lightbulb } from 'lucide-react';
-import { useProjects } from '@/context/ProjectContext';
+import { tagSuggestionsByCategory, generalTechTags } from '@/data/mockData';
 import ImageUploader from './ImageUploader';
 import { Project, FileUploadResult } from '@/types';
 
@@ -44,8 +44,6 @@ const ProjectForm = ({
     defaultValues?.category || 'Web App'
   );
 
-  const { allowedCategories, allowedTags } = useProjects();
-
   const form = useForm<ProjectFormValues>({
     defaultValues: defaultValues || {
       title: '',
@@ -53,7 +51,7 @@ const ProjectForm = ({
       coverImage: '/placeholder.svg',
       screenshots: ['/placeholder.svg'],
       demoUrl: 'https://example.com',
-      category: allowedCategories[0] || 'Web App',
+      category: 'Web App',
       tags: [],
       features: [],
     },
@@ -125,8 +123,11 @@ const ProjectForm = ({
   };
 
   const getSuggestedTags = () => {
-    // Filter suggested tags to only show allowed ones
-    return allowedTags
+    const categoryTags = tagSuggestionsByCategory[selectedCategory as keyof typeof tagSuggestionsByCategory] || [];
+    const combinedTags = [...categoryTags, ...generalTechTags];
+    
+    // Filter out already selected tags and limit to 12 suggestions
+    return combinedTags
       .filter(tag => !selectedTags.includes(tag))
       .slice(0, 12);
   };
@@ -215,9 +216,10 @@ const ProjectForm = ({
                     value={selectedCategory}
                     onChange={(e) => handleCategoryChange(e.target.value)}
                   >
-                    {allowedCategories.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
+                    <option value="Web App">Web App</option>
+                    <option value="Mobile App">Mobile App</option>
+                    <option value="Website">Website</option>
+                    <option value="Desktop App">Desktop App</option>
                   </select>
                 </FormControl>
                 <FormMessage />
@@ -308,7 +310,7 @@ const ProjectForm = ({
                   </HexaButton>
                 </div>
                 
-                {/* Suggested Tags - Filtered by user permissions */}
+                {/* Suggested Tags */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Lightbulb size={14} />

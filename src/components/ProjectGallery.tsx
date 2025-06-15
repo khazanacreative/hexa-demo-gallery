@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Project } from '@/types';
 import ProjectCard from './ProjectCard';
@@ -9,6 +10,7 @@ import { useProjects } from '@/context/ProjectContext';
 import { HexaButton } from './ui/hexa-button';
 import { Input } from './ui/input';
 import { Plus, Filter, LayoutGrid, Search, X, Tag } from 'lucide-react';
+import { allTags } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from './ui/use-toast';
 
@@ -33,9 +35,7 @@ const ProjectGallery = () => {
     setSelectedCategory,
     selectedTags,
     toggleTagSelection,
-    refreshProjects,
-    allowedCategories,
-    allowedTags
+    refreshProjects
   } = useProjects();
   
   const isAdmin = currentUser?.role === 'admin';
@@ -218,9 +218,8 @@ const ProjectGallery = () => {
     }
   };
 
-  // Filter categories based on user permissions
-  const categories = allowedCategories.filter(category =>
-    filteredProjects.some(p => p.category === category)
+  const categories = Array.from(
+    new Set(filteredProjects.map(p => p.category).filter(Boolean))
   );
 
   return (
@@ -254,7 +253,6 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      {/* Search */}
       <div className="mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -275,7 +273,6 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      {/* Category Filter */}
       <div className="mb-4 flex flex-wrap gap-2">
         <HexaButton 
           variant={selectedCategory === null ? "hexa" : "outline"}
@@ -288,27 +285,28 @@ const ProjectGallery = () => {
         </HexaButton>
         
         {categories.map(category => (
-          <HexaButton
-            key={category}
-            variant={selectedCategory === category ? "hexa" : "outline"}
-            size="sm"
-            className="rounded-full"
-            onClick={() => setSelectedCategory(category)}
-          >
-            <Filter size={14} className="mr-1" />
-            {category}
-          </HexaButton>
+          category && (
+            <HexaButton
+              key={category}
+              variant={selectedCategory === category ? "hexa" : "outline"}
+              size="sm"
+              className="rounded-full"
+              onClick={() => setSelectedCategory(category)}
+            >
+              <Filter size={14} className="mr-1" />
+              {category}
+            </HexaButton>
+          )
         ))}
       </div>
       
-      {/* Tag Filter - Only show allowed tags */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <Tag size={16} className="text-gray-500" />
           <span className="text-sm font-medium">Tags:</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {allowedTags.map(tag => (
+          {allTags.map(tag => (
             <button
               key={tag}
               onClick={() => toggleTagSelection(tag)}
@@ -324,7 +322,6 @@ const ProjectGallery = () => {
         </div>
       </div>
       
-      {/* Projects Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProjects.map((project) => (
           <ProjectCard 
@@ -343,7 +340,6 @@ const ProjectGallery = () => {
         </div>
       )}
 
-      {/* Modals */}
       <ProjectDetailsModal 
         project={selectedProject} 
         isOpen={isModalOpen} 
