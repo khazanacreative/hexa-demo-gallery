@@ -27,7 +27,8 @@ const ImageUploader = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImageUrl);
-  const [bucketExists, setBucketExists] = useState<boolean | null>(null);
+  const [storageReady, setStorageReady] = useState<boolean>(false);
+  const [checkingStorage, setCheckingStorage] = useState<boolean>(true);
   const { currentUser } = useAuth();
   
   useEffect(() => {
@@ -35,26 +36,69 @@ const ImageUploader = ({
   }, [currentImageUrl]);
 
   useEffect(() => {
-    checkBucketExists();
+    checkStorageSetup();
   }, [bucketName]);
 
-  const checkBucketExists = async () => {
+  const checkStorageSetup = async () => {
     try {
-      console.log('Checking if bucket exists:', bucketName);
-      const { data: buckets, error } = await supabase.storage.listBuckets();
+      setCheckingStorage(true);
+      console.log('Checking storage setup for bucket:', bucketName);
       
-      if (error) {
-        console.error('Error checking buckets:', error);
-        setBucketExists(false);
+      // Try to list buckets to check if our bucket exists
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      
+      if (bucketError) {
+        console.error('Error checking buckets:', bucketError);
+        setStorageReady(false);
+        setError('Storage tidak tersedia. Silakan gunakan URL gambar manual.');
         return;
       }
 
-      const exists = buckets?.some(bucket => bucket.id === bucketName) || false;
-      console.log('Bucket exists:', exists, 'Available buckets:', buckets?.map(b => b.id));
-      setBucketExists(exists);
+      const bucketExists = buckets?.some(bucket => bucket.id === bucketName) || false;
+      console.log('Bucket exists:', bucketExists, 'Available buckets:', buckets?.map(b => b.id));
+      
+      if (!bucketExists) {
+        console.warn(`Bucket ${bucketName} tidak ditemukan`);
+        setStorageReady(false);
+        setError('Storage bucket belum dikonfigurasi. Gunakan URL gambar manual.');
+        return;
+      }
+
+      // Test upload permission with a small test
+      try {
+        const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+        const testPath = `${folderPath}/test-${Date.now()}.txt`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from(bucketName)
+          .upload(testPath, testFile);
+        
+        if (uploadError) {
+          console.error('Upload test failed:', uploadError);
+          setStorageReady(false);
+          setError('Upload tidak diizinkan. Pastikan Anda sudah login.');
+          return;
+        }
+
+        // Clean up test file
+        await supabase.storage.from(bucketName).remove([testPath]);
+        
+        setStorageReady(true);
+        setError(null);
+        console.log('Storage setup check passed');
+        
+      } catch (testError) {
+        console.error('Storage test error:', testError);
+        setStorageReady(false);
+        setError('Storage test gagal. Gunakan URL gambar manual.');
+      }
+      
     } catch (error) {
-      console.error('Error in checkBucketExists:', error);
-      setBucketExists(false);
+      console.error('Storage check error:', error);
+      setStorageReady(false);
+      setError('Gagal memeriksa storage. Gunakan URL gambar manual.');
+    } finally {
+      setCheckingStorage(false);
     }
   };
   
@@ -94,9 +138,8 @@ const ImageUploader = ({
         return;
       }
 
-      // Check if bucket exists
-      if (bucketExists !== true) {
-        throw new Error('Storage bucket tidak tersedia. Silakan refresh halaman dan coba lagi.');
+      if (!storageReady) {
+        throw new Error('Storage belum siap. Silakan coba lagi atau gunakan URL gambar manual.');
       }
       
       // Create unique filename
@@ -212,8 +255,12 @@ const ImageUploader = ({
             variant="outline" 
             size="icon" 
             className="flex-shrink-0"
-            disabled={uploading || bucketExists !== true}
-            title={bucketExists !== true ? "Storage sedang dimuat..." : "Upload gambar"}
+            disabled={uploading || checkingStorage || !storageReady}
+            title={
+              checkingStorage ? "Memeriksa storage..." :
+              !storageReady ? "Upload tidak tersedia" : 
+              "Upload gambar"
+            }
           >
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <Image size={16} />}
           </HexaButton>
@@ -222,7 +269,7 @@ const ImageUploader = ({
             accept="image/*"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={uploadImage}
-            disabled={uploading || bucketExists !== true}
+            disabled={uploading || checkingStorage || !storageReady}
             title="Pilih gambar untuk diupload"
           />
         </div>
@@ -248,17 +295,24 @@ const ImageUploader = ({
         </div>
       )}
 
-      {bucketExists === false && (
-        <div className="text-amber-600 text-xs flex items-center gap-1">
-          <AlertCircle size={12} />
-          <span>Storage bucket tidak tersedia. Silakan refresh halaman dan coba lagi.</span>
-        </div>
-      )}
-
-      {bucketExists === null && (
+      {checkingStorage && (
         <div className="text-blue-600 text-xs flex items-center gap-1">
           <Loader2 size={12} className="animate-spin" />
           <span>Memeriksa storage...</span>
+        </div>
+      )}
+
+      {!checkingStorage && !storageReady && (
+        <div className="text-amber-600 text-xs flex items-center gap-1">
+          <AlertCircle size={12} />
+          <span>Upload dinonaktifkan. Gunakan URL gambar manual.</span>
+        </div>
+      )}
+
+      {!checkingStorage && storageReady && (
+        <div className="text-green-600 text-xs flex items-center gap-1">
+          <span>✓</span>
+          <span>Upload siap digunakan</span>
         </div>
       )}
       
