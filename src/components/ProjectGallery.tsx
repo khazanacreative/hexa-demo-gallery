@@ -63,16 +63,15 @@ const ProjectGallery = () => {
     setIsAddFormOpen(true);
   };
 
-  // Helper function to generate a valid UUID for local users
-  const generateUserUUID = (userId: string): string => {
-    if (userId.length === 32 && userId.includes('-')) {
-      return userId; // Already a UUID
-    }
+  // Helper function to map local user IDs to database UUIDs
+  const getUserUUID = (userId: string): string => {
+    // Map local user IDs to the UUIDs we inserted in the database
+    const userMapping = {
+      'c07e6ba2-a252-4f7c-a0f8-0ac7dbe433d5': '00000001-0000-0000-0000-000000000001', // admin
+      'ef13c84c-195d-44ca-bf4a-8166500f1b3c': '00000002-0000-0000-0000-000000000002', // user
+    };
     
-    // Create a UUID-like string from the user ID
-    // This ensures consistency for the same user ID
-    const paddedId = userId.padStart(8, '0');
-    return `${paddedId.substring(0, 8)}-0000-0000-0000-${paddedId.padStart(12, '0')}`;
+    return userMapping[userId as keyof typeof userMapping] || userId;
   };
 
   const handleAddProject = async (projectData: Omit<Project, 'id' | 'createdAt'>) => {
@@ -88,9 +87,9 @@ const ProjectGallery = () => {
         throw new Error('You must be logged in to add a project');
       }
 
-      // Generate a proper UUID for the user
-      const userUUID = generateUserUUID(currentUser.id);
-      console.log('Generated user UUID:', userUUID);
+      // Map the user ID to the database UUID
+      const userUUID = getUserUUID(currentUser.id);
+      console.log('Mapped user UUID:', userUUID);
 
       const { data, error } = await supabase
         .from('projects')
