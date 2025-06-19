@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { ProjectProvider } from '@/context/ProjectContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -9,7 +10,7 @@ import Footer from '@/components/Footer';
 import { UserPlus, Trash2, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-const UserManagement = () => {
+const UserManagementContent = () => {
   const { currentUser, users, addUser, removeUser } = useAuth();
   const { toast } = useToast();
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -229,6 +230,14 @@ const UserManagement = () => {
         <Footer />
       </div>
     </div>
+  );
+};
+
+const UserManagement = () => {
+  return (
+    <ProjectProvider>
+      <UserManagementContent />
+    </ProjectProvider>
   );
 };
 
