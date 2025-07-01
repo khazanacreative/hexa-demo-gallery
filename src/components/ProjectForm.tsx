@@ -204,6 +204,7 @@ const ProjectForm = ({
                         <option value="Mobile App">Mobile App</option>
                         <option value="Website">Website</option>
                         <option value="Desktop App">Desktop App</option>
+                        <option value="UI Design">UI Design</option>
                       </select>
                     </FormControl>
                     <FormMessage />
